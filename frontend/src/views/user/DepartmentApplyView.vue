@@ -16,9 +16,12 @@
             </el-table-column>
             <el-table-column prop="resourceType" label="类型" width="90" />
             <el-table-column prop="description" label="说明" min-width="220" />
-            <el-table-column label="操作" width="200">
+            <el-table-column label="操作" width="280">
               <template #default="{ row }">
-                <el-button type="primary" plain @click="apply(row.id)">提交申请</el-button>
+                <el-space wrap>
+                  <el-button type="primary" plain @click="apply(row.id)">提交申请</el-button>
+                  <el-button plain @click="verifyDenied(row.code)">验证无权限</el-button>
+                </el-space>
               </template>
             </el-table-column>
           </el-table>
@@ -57,7 +60,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { createApplicationApi, getApplyCatalogApi, getMyApplicationsApi } from '@/api/modules'
+import { createApplicationApi, getApplyCatalogApi, getMyApplicationsApi, runtimeInvokeApi } from '@/api/modules'
 import type { AccessRequestItem, AccessRequestStatus, ResourceSummary } from '@/types'
 
 const catalog = ref<ResourceSummary[]>([])
@@ -100,6 +103,15 @@ async function apply(resourceId: number) {
   await createApplicationApi({ resourceId, reason: value })
   ElMessage.success('申请已提交')
   await loadData()
+}
+
+async function verifyDenied(code: string) {
+  const result = await runtimeInvokeApi(code)
+  if (result.allowed) {
+    ElMessage.success(result.message)
+    return
+  }
+  ElMessage.warning(result.message)
 }
 
 function handleCatalogPageChange(value: number) {
