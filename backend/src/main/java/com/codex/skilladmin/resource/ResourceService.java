@@ -1,7 +1,9 @@
 package com.codex.skilladmin.resource;
 
-import com.codex.skilladmin.common.PageResponse;
 import com.codex.skilladmin.common.BusinessException;
+import com.codex.skilladmin.common.PageResponse;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.codex.skilladmin.permission.PermissionType;
 import com.codex.skilladmin.permission.ResourcePermissionEntity;
 import com.codex.skilladmin.permission.ResourcePermissionRepository;
@@ -21,17 +23,20 @@ public class ResourceService {
     private final SkillConfigRepository skillConfigRepository;
     private final McpConfigRepository mcpConfigRepository;
     private final ResourcePermissionRepository resourcePermissionRepository;
+    private final ObjectMapper objectMapper;
 
     public ResourceService(
             ResourceRepository resourceRepository,
             SkillConfigRepository skillConfigRepository,
             McpConfigRepository mcpConfigRepository,
-            ResourcePermissionRepository resourcePermissionRepository
+            ResourcePermissionRepository resourcePermissionRepository,
+            ObjectMapper objectMapper
     ) {
         this.resourceRepository = resourceRepository;
         this.skillConfigRepository = skillConfigRepository;
         this.mcpConfigRepository = mcpConfigRepository;
         this.resourcePermissionRepository = resourcePermissionRepository;
+        this.objectMapper = objectMapper;
     }
 
     public ResourcePageResponse listManageableResources(AuthenticatedUser user, String keyword, Integer pageNum, Integer pageSize) {
@@ -248,7 +253,7 @@ public class ResourceService {
             SkillConfigEntity skillConfig = skillConfigRepository.findById(resourceId).orElseGet(SkillConfigEntity::new);
             skillConfig.setResourceId(resourceId);
             skillConfig.setVersion(request.version());
-            skillConfig.setManifestJson(Optional.ofNullable(request.manifestJson()).orElse("{}"));
+            skillConfig.setManifestJson(normalizeJson(request.manifestJson(), JsonKind.OBJECT, "{}"));
             skillConfig.setEntrypoint(request.entrypoint());
             skillConfig.setIcon(request.icon());
             skillConfigRepository.save(skillConfig);
@@ -262,12 +267,46 @@ public class ResourceService {
         mcpConfig.setResourceId(resourceId);
         mcpConfig.setServerName(Optional.ofNullable(request.serverName()).orElse(""));
         mcpConfig.setTransportType(Optional.ofNullable(request.transportType()).orElse("STDIO"));
-        mcpConfig.setCommandLine(request.commandLine());
-        mcpConfig.setArgsJson(request.argsJson());
-        mcpConfig.setEnvJson(request.envJson());
-        mcpConfig.setEndpointUrl(request.endpointUrl());
-        mcpConfig.setHeadersJson(request.headersJson());
+        mcpConfig.setCommandLine(normalizeText(request.commandLine()));
+        mcpConfig.setArgsJson(normalizeJson(request.argsJson(), JsonKind.ARRAY, null));
+        mcpConfig.setEnvJson(normalizeJson(request.envJson(), JsonKind.OBJECT, null));
+        mcpConfig.setEndpointUrl(normalizeText(request.endpointUrl()));
+        mcpConfig.setHeadersJson(normalizeJson(request.headersJson(), JsonKind.OBJECT, null));
         mcpConfigRepository.save(mcpConfig);
+    }
+
+    private String normalizeText(String value) {
+        if (!StringUtils.hasText(value)) {
+            return null;
+        }
+        return value.trim();
+    }
+
+    private String normalizeJson(String value, JsonKind kind, String defaultValue) {
+        if (!StringUtils.hasText(value)) {
+            return defaultValue;
+        }
+        String trimmed = value.trim();
+        try {
+            JsonNode node = objectMapper.readTree(trimmed);
+            if (kind == JsonKind.ARRAY && !node.isArray()) {
+                throw new BusinessException(400, "JSON 配置格式不正确，需要传入 JSON 数组");
+            }
+            if (kind == JsonKind.OBJECT && !node.isObject()) {
+                throw new BusinessException(400, "JSON 配置格式不正确，需要传入 JSON 对象");
+            }
+            return trimmed;
+        } catch (BusinessException exception) {
+            throw exception;
+        } catch (Exception exception) {
+            String label = kind == JsonKind.ARRAY ? "JSON 数组" : "JSON 对象";
+            throw new BusinessException(400, "JSON 配置格式不正确，请输入合法的" + label);
+        }
+    }
+
+    private enum JsonKind {
+        ARRAY,
+        OBJECT
     }
 
     private void replacePermissions(ResourceEntity resource, List<PermissionAssignmentRequest> assignments, AuthenticatedUser user) {
