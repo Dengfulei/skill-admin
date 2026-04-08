@@ -3,7 +3,7 @@
     <el-aside width="256px" class="aside">
       <div class="brand-block">
         <span class="brand-kicker">Codex Console</span>
-        <h2>Skill Admin</h2>
+        <h2>Skill/MCP Admin</h2>
         <p>数据库化技能中心与三级权限控制工作台</p>
       </div>
       <el-menu :default-active="route.path" router class="menu">
@@ -37,10 +37,18 @@
             <strong>{{ authStore.user?.displayName }}</strong>
             <span>{{ authStore.user?.username }}</span>
           </div>
-          <el-tag type="danger" v-if="authStore.user?.systemAdmin">系统管理员</el-tag>
-          <el-tag type="warning" v-else-if="authStore.user?.departmentAdminIds?.length">部门管理员</el-tag>
+          <el-tag type="danger" v-if="authStore.user?.systemAdmin"
+            >系统管理员</el-tag
+          >
+          <el-tag
+            type="warning"
+            v-else-if="authStore.user?.departmentAdminIds?.length"
+            >部门管理员</el-tag
+          >
           <el-tag type="success" v-else>普通用户</el-tag>
-          <el-button link type="primary" @click="handleLogout">退出登录</el-button>
+          <el-button link type="primary" @click="handleLogout"
+            >退出登录</el-button
+          >
         </div>
       </el-header>
       <el-main class="main">
@@ -51,27 +59,33 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
+import { computed } from "vue";
+import { useRoute, useRouter } from "vue-router";
+import { useAuthStore } from "@/stores/auth";
 
-const route = useRoute()
-const router = useRouter()
-const authStore = useAuthStore()
+const route = useRoute();
+const router = useRouter();
+const authStore = useAuthStore();
 
 const titleMap: Record<string, [string, string]> = {
-  '/user/resources': ['我的可用技能', '展示当前用户可访问的公共、部门与个人 Skill/MCP 资源'],
-  '/user/applications': ['部门技能申请', '提交部门级技能申请并跟踪审批状态'],
-  '/admin/resources': ['资源管理', '维护 Skill/MCP 资源、按三级权限分配与启停控制'],
-  '/admin/applications': ['申请审批', '部门管理员或系统管理员处理部门技能申请']
-}
+  "/user/resources": [
+    "我的可用技能",
+    "展示当前用户可访问的公共、部门与个人 Skill/MCP 资源",
+  ],
+  "/user/applications": ["部门技能申请", "提交部门级技能申请并跟踪审批状态"],
+  "/admin/resources": [
+    "资源管理",
+    "维护 Skill/MCP 资源、按三级权限分配与启停控制",
+  ],
+  "/admin/applications": ["申请审批", "部门管理员或系统管理员处理部门技能申请"],
+};
 
-const pageTitle = computed(() => titleMap[route.path]?.[0] ?? 'Skill Admin')
-const subtitle = computed(() => titleMap[route.path]?.[1] ?? '')
+const pageTitle = computed(() => titleMap[route.path]?.[0] ?? "Skill Admin");
+const subtitle = computed(() => titleMap[route.path]?.[1] ?? "");
 
 function handleLogout() {
-  authStore.logout()
-  router.push('/login')
+  authStore.logout();
+  router.push("/login");
 }
 </script>
 
