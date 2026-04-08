@@ -6,7 +6,6 @@ import com.codex.skilladmin.security.CurrentUser;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -20,8 +19,13 @@ public class AdminResourceController {
     }
 
     @GetMapping
-    public ApiResponse<List<ResourceSummaryResponse>> list(@CurrentUser AuthenticatedUser user) {
-        return ApiResponse.success(resourceService.listManageableResources(user));
+    public ApiResponse<ResourcePageResponse> list(
+            @CurrentUser AuthenticatedUser user,
+            @RequestParam(defaultValue = "1") Integer pageNum,
+            @RequestParam(defaultValue = "10") Integer pageSize,
+            @RequestParam(required = false) String keyword
+    ) {
+        return ApiResponse.success(resourceService.listManageableResources(user, keyword, pageNum, pageSize));
     }
 
     @GetMapping("/{id}")

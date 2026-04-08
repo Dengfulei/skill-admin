@@ -1,5 +1,6 @@
 package com.codex.skilladmin.resource;
 
+import com.codex.skilladmin.common.PageResponse;
 import com.codex.skilladmin.common.BusinessException;
 import com.codex.skilladmin.permission.PermissionType;
 import com.codex.skilladmin.permission.ResourcePermissionEntity;
@@ -8,6 +9,7 @@ import com.codex.skilladmin.security.AuthenticatedUser;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
+import org.springframework.util.StringUtils;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -32,11 +34,13 @@ public class ResourceService {
         this.resourcePermissionRepository = resourcePermissionRepository;
     }
 
-    public List<ResourceSummaryResponse> listManageableResources(AuthenticatedUser user) {
-        return resourceRepository.findAllByDeletedFalseOrderByIdDesc().stream()
+    public ResourcePageResponse listManageableResources(AuthenticatedUser user, String keyword, Integer pageNum, Integer pageSize) {
+        List<ResourceSummaryResponse> resources = resourceRepository.findAllByDeletedFalseOrderByIdDesc().stream()
                 .filter(resource -> canManageResource(user, resource))
                 .map(this::toSummary)
+                .filter(resource -> matchesKeyword(resource, keyword))
                 .toList();
+        return buildResourcePage(resources, pageNum, pageSize);
     }
 
     public ResourceDetailResponse getDetail(Long id, AuthenticatedUser user) {
@@ -93,7 +97,17 @@ public class ResourceService {
         resourceRepository.save(resource);
     }
 
-    public List<ResourceSummaryResponse> listAvailableResources(AuthenticatedUser user) {
+    public ResourcePageResponse listAvailableResources(AuthenticatedUser user, Integer pageNum, Integer pageSize) {
+        List<ResourceSummaryResponse> resources = findAvailableResources(user);
+        return buildResourcePage(resources, pageNum, pageSize);
+    }
+
+    public PageResponse<ResourceSummaryResponse> listDepartmentApplyCatalog(AuthenticatedUser user, Integer pageNum, Integer pageSize) {
+        List<ResourceSummaryResponse> resources = findDepartmentApplyCatalog(user);
+        return paginate(resources, pageNum, pageSize);
+    }
+
+    private List<ResourceSummaryResponse> findAvailableResources(AuthenticatedUser user) {
         Set<Long> resourceIds = new HashSet<>();
         resourceIds.addAll(resourcePermissionRepository
                 .findAllByTargetScopeAndPermissionTypeAndEnabledTrueAndDeletedFalse(ScopeLevel.PUBLIC, PermissionType.USE)
@@ -123,11 +137,11 @@ public class ResourceService {
                 .toList();
     }
 
-    public List<ResourceSummaryResponse> listDepartmentApplyCatalog(AuthenticatedUser user) {
+    private List<ResourceSummaryResponse> findDepartmentApplyCatalog(AuthenticatedUser user) {
         if (CollectionUtils.isEmpty(user.getDepartmentIds())) {
             return List.of();
         }
-        Set<Long> alreadyAccessible = listAvailableResources(user).stream()
+        Set<Long> alreadyAccessible = findAvailableResources(user).stream()
                 .map(ResourceSummaryResponse::id)
                 .collect(Collectors.toSet());
         return resourceRepository.findAllByOwnerDepartmentIdInAndDeletedFalse(user.getDepartmentIds()).stream()
@@ -330,5 +344,58 @@ public class ResourceService {
                 resource.getOwnerUserId(),
                 resource.getDescription()
         );
+    }
+
+    private ResourcePageResponse buildResourcePage(List<ResourceSummaryResponse> resources, Integer pageNum, Integer pageSize) {
+        PageResponse<ResourceSummaryResponse> page = paginate(resources, pageNum, pageSize);
+        return new ResourcePageResponse(
+                page.records(),
+                page.total(),
+                page.pageNum(),
+                page.pageSize(),
+                buildStats(resources)
+        );
+    }
+
+    private ResourceListStatsResponse buildStats(List<ResourceSummaryResponse> resources) {
+        return new ResourceListStatsResponse(
+                resources.size(),
+                resources.stream().filter(item -> item.resourceType() == ResourceType.SKILL).count(),
+                resources.stream().filter(item -> item.resourceType() == ResourceType.MCP).count(),
+                resources.stream().filter(item -> item.scopeLevel() == ScopeLevel.PUBLIC).count(),
+                resources.stream().filter(item -> item.scopeLevel() == ScopeLevel.DEPARTMENT).count(),
+                resources.stream().filter(item -> item.scopeLevel() == ScopeLevel.PERSONAL).count()
+        );
+    }
+
+    private <T> PageResponse<T> paginate(List<T> items, Integer pageNum, Integer pageSize) {
+        int safePageNum = normalizePageNum(pageNum);
+        int safePageSize = normalizePageSize(pageSize);
+        int fromIndex = Math.min((safePageNum - 1) * safePageSize, items.size());
+        int toIndex = Math.min(fromIndex + safePageSize, items.size());
+        return new PageResponse<>(items.subList(fromIndex, toIndex), items.size(), safePageNum, safePageSize);
+    }
+
+    private int normalizePageNum(Integer pageNum) {
+        return pageNum == null || pageNum < 1 ? 1 : pageNum;
+    }
+
+    private int normalizePageSize(Integer pageSize) {
+        if (pageSize == null || pageSize < 1) {
+            return 10;
+        }
+        return Math.min(pageSize, 100);
+    }
+
+    private boolean matchesKeyword(ResourceSummaryResponse resource, String keyword) {
+        if (!StringUtils.hasText(keyword)) {
+            return true;
+        }
+        String normalizedKeyword = keyword.trim().toLowerCase(Locale.ROOT);
+        return containsIgnoreCase(resource.name(), normalizedKeyword) || containsIgnoreCase(resource.code(), normalizedKeyword);
+    }
+
+    private boolean containsIgnoreCase(String source, String keyword) {
+        return source != null && source.toLowerCase(Locale.ROOT).contains(keyword);
     }
 }

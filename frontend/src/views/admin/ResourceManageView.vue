@@ -3,15 +3,15 @@
     <div class="metric-grid">
       <div class="metric-item">
         <h4>当前可管理资源</h4>
-        <p>{{ resources.length }}</p>
+        <p>{{ stats.total }}</p>
       </div>
       <div class="metric-item">
         <h4>Skill 数量</h4>
-        <p>{{ skillCount }}</p>
+        <p>{{ stats.skillCount }}</p>
       </div>
       <div class="metric-item">
         <h4>MCP 数量</h4>
-        <p>{{ mcpCount }}</p>
+        <p>{{ stats.mcpCount }}</p>
       </div>
     </div>
 
@@ -22,43 +22,63 @@
           <p>集中维护资源定义、归属范围、启用状态和默认授权策略。</p>
         </div>
         <div class="toolbar-main">
-          <el-input v-model="keyword" placeholder="按名称或编码过滤" class="search-input" clearable />
+          <el-input
+            v-model="keyword"
+            placeholder="按名称或编码过滤"
+            class="search-input"
+            clearable
+            @clear="handleSearch"
+            @keyup.enter="handleSearch"
+          />
+          <el-button @click="handleSearch">搜索</el-button>
           <el-button type="primary" @click="openCreate">新建资源</el-button>
         </div>
       </div>
       <div class="data-table">
-        <el-table :data="filteredResources" border>
+        <el-table :data="resources" border>
           <el-table-column prop="name" label="名称" min-width="180" />
           <el-table-column label="编码" min-width="180">
             <template #default="{ row }">
               <span class="code-text">{{ row.code }}</span>
             </template>
           </el-table-column>
-        <el-table-column prop="resourceType" label="类型" width="90" />
-        <el-table-column prop="scopeLevel" label="范围" width="110" />
-        <el-table-column prop="status" label="状态" width="110" />
-        <el-table-column label="启用" width="90">
-          <template #default="{ row }">
-            <el-tag :type="row.enabled ? 'success' : 'info'">{{ row.enabled ? '是' : '否' }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="需要申请" width="110">
-          <template #default="{ row }">
-            <el-tag :type="row.approvalRequired ? 'warning' : 'info'">{{ row.approvalRequired ? '是' : '否' }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="280" fixed="right">
-          <template #default="{ row }">
-            <el-space wrap>
-              <el-button link type="primary" @click="openEdit(row.id)">编辑</el-button>
-              <el-button link type="warning" @click="toggleEnabled(row)">
-                {{ row.enabled ? '禁用' : '启用' }}
-              </el-button>
-              <el-button link type="danger" @click="remove(row.id)">删除</el-button>
-            </el-space>
-          </template>
-        </el-table-column>
+          <el-table-column prop="resourceType" label="类型" width="90" />
+          <el-table-column prop="scopeLevel" label="范围" width="110" />
+          <el-table-column prop="status" label="状态" width="110" />
+          <el-table-column label="启用" width="90">
+            <template #default="{ row }">
+              <el-tag :type="row.enabled ? 'success' : 'info'">{{ row.enabled ? '是' : '否' }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="需要申请" width="110">
+            <template #default="{ row }">
+              <el-tag :type="row.approvalRequired ? 'warning' : 'info'">{{ row.approvalRequired ? '是' : '否' }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="280" fixed="right">
+            <template #default="{ row }">
+              <el-space wrap>
+                <el-button link type="primary" @click="openEdit(row.id)">编辑</el-button>
+                <el-button link type="warning" @click="toggleEnabled(row)">
+                  {{ row.enabled ? '禁用' : '启用' }}
+                </el-button>
+                <el-button link type="danger" @click="remove(row.id)">删除</el-button>
+              </el-space>
+            </template>
+          </el-table-column>
         </el-table>
+      </div>
+      <div class="table-pagination">
+        <el-pagination
+          :current-page="pageNum"
+          :page-size="pageSize"
+          :page-sizes="[10, 20, 50]"
+          :total="total"
+          background
+          layout="total, sizes, prev, pager, next"
+          @current-change="handlePageChange"
+          @size-change="handleSizeChange"
+        />
       </div>
     </div>
 
@@ -73,7 +93,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import ResourceDialog from '@/components/ResourceDialog.vue'
 import {
@@ -85,24 +105,66 @@ import {
   toggleResourceEnabledApi,
   updateResourceApi
 } from '@/api/modules'
-import type { Department, ResourceDetail, ResourceSummary, ResourceUpsertRequest } from '@/types'
+import type { Department, ResourceDetail, ResourceListStats, ResourceSummary, ResourceUpsertRequest } from '@/types'
 
 const resources = ref<ResourceSummary[]>([])
 const departments = ref<Department[]>([])
 const keyword = ref('')
 const dialogVisible = ref(false)
 const currentDetail = ref<ResourceDetail | null>(null)
-
-const filteredResources = computed(() =>
-  resources.value.filter((item) =>
-    [item.name, item.code].some((value) => value?.toLowerCase().includes(keyword.value.toLowerCase()))
-  )
-)
-const skillCount = computed(() => resources.value.filter((item) => item.resourceType === 'SKILL').length)
-const mcpCount = computed(() => resources.value.filter((item) => item.resourceType === 'MCP').length)
+const pageNum = ref(1)
+const pageSize = ref(10)
+const total = ref(0)
+const stats = reactive<ResourceListStats>({
+  total: 0,
+  skillCount: 0,
+  mcpCount: 0,
+  publicCount: 0,
+  departmentCount: 0,
+  personalCount: 0
+})
 
 async function loadData() {
-  ;[resources.value, departments.value] = await Promise.all([getAdminResourcesApi(), getDepartmentsApi()])
+  const [resourcePage, departmentList] = await Promise.all([
+    getAdminResourcesApi({
+      pageNum: pageNum.value,
+      pageSize: pageSize.value,
+      keyword: keyword.value.trim() || undefined
+    }),
+    getDepartmentsApi()
+  ])
+  resources.value = resourcePage.records
+  total.value = resourcePage.total
+  Object.assign(stats, resourcePage.stats)
+  departments.value = departmentList
+  await ensurePageInRange()
+}
+
+async function ensurePageInRange() {
+  if (total.value === 0 || resources.value.length > 0 || pageNum.value === 1) {
+    return
+  }
+  const lastPage = Math.max(1, Math.ceil(total.value / pageSize.value))
+  if (pageNum.value !== lastPage) {
+    pageNum.value = lastPage
+    await loadData()
+  }
+}
+
+function handleSearch() {
+  pageNum.value = 1
+  loadData()
+}
+
+function handlePageChange(value: number) {
+  pageNum.value = value
+  loadData()
+}
+
+function handleSizeChange(value: number) {
+  pageSize.value = value
+  pageNum.value = 1
+  loadData()
 }
 
 function openCreate() {
@@ -148,9 +210,19 @@ onMounted(loadData)
   width: 300px;
 }
 
+.table-pagination {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
 @media (max-width: 720px) {
   .search-input {
     width: 100%;
+  }
+
+  .table-pagination {
+    justify-content: center;
   }
 }
 </style>

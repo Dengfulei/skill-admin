@@ -23,6 +23,18 @@
             </el-table-column>
           </el-table>
         </div>
+        <div class="table-pagination">
+          <el-pagination
+            :current-page="catalogPageNum"
+            :page-size="catalogPageSize"
+            :page-sizes="[10, 20, 50]"
+            :total="catalogTotal"
+            background
+            layout="total, sizes, prev, pager, next"
+            @current-change="handleCatalogPageChange"
+            @size-change="handleCatalogSizeChange"
+          />
+        </div>
       </el-tab-pane>
       <el-tab-pane label="我的申请记录">
         <div class="data-table">
@@ -49,6 +61,9 @@ import { createApplicationApi, getApplyCatalogApi, getMyApplicationsApi } from '
 import type { AccessRequestItem, AccessRequestStatus, ResourceSummary } from '@/types'
 
 const catalog = ref<ResourceSummary[]>([])
+const catalogPageNum = ref(1)
+const catalogPageSize = ref(10)
+const catalogTotal = ref(0)
 const applications = ref<AccessRequestItem[]>([])
 
 function statusTag(status: AccessRequestStatus) {
@@ -56,7 +71,25 @@ function statusTag(status: AccessRequestStatus) {
 }
 
 async function loadData() {
-  ;[catalog.value, applications.value] = await Promise.all([getApplyCatalogApi(), getMyApplicationsApi()])
+  const [catalogPage, applicationList] = await Promise.all([
+    getApplyCatalogApi({ pageNum: catalogPageNum.value, pageSize: catalogPageSize.value }),
+    getMyApplicationsApi()
+  ])
+  catalog.value = catalogPage.records
+  catalogTotal.value = catalogPage.total
+  applications.value = applicationList
+  await ensureCatalogPageInRange()
+}
+
+async function ensureCatalogPageInRange() {
+  if (catalogTotal.value === 0 || catalog.value.length > 0 || catalogPageNum.value === 1) {
+    return
+  }
+  const lastPage = Math.max(1, Math.ceil(catalogTotal.value / catalogPageSize.value))
+  if (catalogPageNum.value !== lastPage) {
+    catalogPageNum.value = lastPage
+    await loadData()
+  }
 }
 
 async function apply(resourceId: number) {
@@ -69,5 +102,30 @@ async function apply(resourceId: number) {
   await loadData()
 }
 
+function handleCatalogPageChange(value: number) {
+  catalogPageNum.value = value
+  loadData()
+}
+
+function handleCatalogSizeChange(value: number) {
+  catalogPageSize.value = value
+  catalogPageNum.value = 1
+  loadData()
+}
+
 onMounted(loadData)
 </script>
+
+<style scoped>
+.table-pagination {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
+@media (max-width: 720px) {
+  .table-pagination {
+    justify-content: center;
+  }
+}
+</style>

@@ -3,19 +3,19 @@
     <div class="metric-grid">
       <div class="metric-item">
         <h4>我的可用资源</h4>
-        <p>{{ resources.length }}</p>
+        <p>{{ stats.total }}</p>
       </div>
       <div class="metric-item">
         <h4>公共资源</h4>
-        <p>{{ publicCount }}</p>
+        <p>{{ stats.publicCount }}</p>
       </div>
       <div class="metric-item">
         <h4>部门资源</h4>
-        <p>{{ departmentCount }}</p>
+        <p>{{ stats.departmentCount }}</p>
       </div>
       <div class="metric-item">
         <h4>个人资源</h4>
-        <p>{{ personalCount }}</p>
+        <p>{{ stats.personalCount }}</p>
       </div>
     </div>
     <div class="page-card page-panel">
@@ -45,24 +45,46 @@
           </el-table-column>
         </el-table>
       </div>
+      <div class="table-pagination">
+        <el-pagination
+          :current-page="pageNum"
+          :page-size="pageSize"
+          :page-sizes="[10, 20, 50]"
+          :total="total"
+          background
+          layout="total, sizes, prev, pager, next"
+          @current-change="handlePageChange"
+          @size-change="handleSizeChange"
+        />
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { getAvailableResourcesApi, runtimeInvokeApi } from '@/api/modules'
-import type { ResourceSummary } from '@/types'
+import type { ResourceListStats, ResourceSummary } from '@/types'
 
 const resources = ref<ResourceSummary[]>([])
-
-const publicCount = computed(() => resources.value.filter((item) => item.scopeLevel === 'PUBLIC').length)
-const departmentCount = computed(() => resources.value.filter((item) => item.scopeLevel === 'DEPARTMENT').length)
-const personalCount = computed(() => resources.value.filter((item) => item.scopeLevel === 'PERSONAL').length)
+const pageNum = ref(1)
+const pageSize = ref(10)
+const total = ref(0)
+const stats = reactive<ResourceListStats>({
+  total: 0,
+  skillCount: 0,
+  mcpCount: 0,
+  publicCount: 0,
+  departmentCount: 0,
+  personalCount: 0
+})
 
 async function loadData() {
-  resources.value = await getAvailableResourcesApi()
+  const page = await getAvailableResourcesApi({ pageNum: pageNum.value, pageSize: pageSize.value })
+  resources.value = page.records
+  total.value = page.total
+  Object.assign(stats, page.stats)
 }
 
 async function invoke(code: string) {
@@ -74,5 +96,30 @@ async function invoke(code: string) {
   ElMessage.warning(result.message)
 }
 
+function handlePageChange(value: number) {
+  pageNum.value = value
+  loadData()
+}
+
+function handleSizeChange(value: number) {
+  pageSize.value = value
+  pageNum.value = 1
+  loadData()
+}
+
 onMounted(loadData)
 </script>
+
+<style scoped>
+.table-pagination {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
+@media (max-width: 720px) {
+  .table-pagination {
+    justify-content: center;
+  }
+}
+</style>

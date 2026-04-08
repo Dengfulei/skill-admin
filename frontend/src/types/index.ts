@@ -4,6 +4,13 @@ export interface ApiResponse<T> {
   data: T
 }
 
+export interface PageResponse<T> {
+  records: T[]
+  total: number
+  pageNum: number
+  pageSize: number
+}
+
 export interface AuthenticatedUser {
   id: number
   username: string
@@ -35,6 +42,19 @@ export interface ResourceSummary {
   ownerDepartmentId?: number
   ownerUserId?: number
   description?: string
+}
+
+export interface ResourceListStats {
+  total: number
+  skillCount: number
+  mcpCount: number
+  publicCount: number
+  departmentCount: number
+  personalCount: number
+}
+
+export interface ResourcePageResponse extends PageResponse<ResourceSummary> {
+  stats: ResourceListStats
 }
 
 export interface PermissionAssignment {

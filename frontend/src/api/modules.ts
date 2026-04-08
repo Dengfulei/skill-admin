@@ -4,7 +4,9 @@ import type {
   AuthenticatedUser,
   Department,
   LoginResponse,
+  PageResponse,
   ResourceDetail,
+  ResourcePageResponse,
   ResourceSummary,
   ResourceUpsertRequest
 } from '@/types'
@@ -16,7 +18,8 @@ export const getCurrentUserApi = () => http.get<any, AuthenticatedUser>('/api/au
 
 export const getDepartmentsApi = () => http.get<any, Department[]>('/api/meta/departments')
 
-export const getAdminResourcesApi = () => http.get<any, ResourceSummary[]>('/api/admin/resources')
+export const getAdminResourcesApi = (params: { pageNum: number; pageSize: number; keyword?: string }) =>
+  http.get<any, ResourcePageResponse>('/api/admin/resources', { params })
 
 export const getAdminResourceDetailApi = (id: number) =>
   http.get<any, ResourceDetail>(`/api/admin/resources/${id}`)
@@ -33,11 +36,11 @@ export const toggleResourceEnabledApi = (id: number, enabled: boolean) =>
 export const deleteResourceApi = (id: number) =>
   http.delete<any, void>(`/api/admin/resources/${id}`)
 
-export const getAvailableResourcesApi = () =>
-  http.get<any, ResourceSummary[]>('/api/user/resources/available')
+export const getAvailableResourcesApi = (params: { pageNum: number; pageSize: number }) =>
+  http.get<any, ResourcePageResponse>('/api/user/resources/available', { params })
 
-export const getApplyCatalogApi = () =>
-  http.get<any, ResourceSummary[]>('/api/user/resources/apply-catalog')
+export const getApplyCatalogApi = (params: { pageNum: number; pageSize: number }) =>
+  http.get<any, PageResponse<ResourceSummary>>('/api/user/resources/apply-catalog', { params })
 
 export const createApplicationApi = (payload: { resourceId: number; reason?: string }) =>
   http.post<any, AccessRequestItem>('/api/user/applications', payload)
