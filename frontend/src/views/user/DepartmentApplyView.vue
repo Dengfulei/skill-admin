@@ -1,0 +1,61 @@
+<template>
+  <div class="page-card" style="padding: 20px">
+    <el-tabs>
+      <el-tab-pane label="可申请部门技能">
+        <el-table :data="catalog" border>
+          <el-table-column prop="name" label="资源名称" min-width="180" />
+          <el-table-column prop="code" label="编码" min-width="180" />
+          <el-table-column prop="resourceType" label="类型" width="90" />
+          <el-table-column prop="description" label="说明" min-width="220" />
+          <el-table-column label="操作" width="200">
+            <template #default="{ row }">
+              <el-button type="primary" plain @click="apply(row.id)">提交申请</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </el-tab-pane>
+      <el-tab-pane label="我的申请记录">
+        <el-table :data="applications" border>
+          <el-table-column prop="resourceName" label="资源名称" min-width="180" />
+          <el-table-column prop="reason" label="申请理由" min-width="220" />
+          <el-table-column label="状态" width="120">
+            <template #default="{ row }">
+              <el-tag :type="statusTag(row.status)">{{ row.status }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="reviewComment" label="审批意见" min-width="220" />
+        </el-table>
+      </el-tab-pane>
+    </el-tabs>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { onMounted, ref } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { createApplicationApi, getApplyCatalogApi, getMyApplicationsApi } from '@/api/modules'
+import type { AccessRequestItem, AccessRequestStatus, ResourceSummary } from '@/types'
+
+const catalog = ref<ResourceSummary[]>([])
+const applications = ref<AccessRequestItem[]>([])
+
+function statusTag(status: AccessRequestStatus) {
+  return status === 'APPROVED' ? 'success' : status === 'REJECTED' ? 'danger' : 'warning'
+}
+
+async function loadData() {
+  ;[catalog.value, applications.value] = await Promise.all([getApplyCatalogApi(), getMyApplicationsApi()])
+}
+
+async function apply(resourceId: number) {
+  const { value } = await ElMessageBox.prompt('请输入申请理由', '申请部门技能', {
+    inputPlaceholder: '如：本周需要使用销售分析 MCP 处理线索复盘',
+    confirmButtonText: '提交申请'
+  })
+  await createApplicationApi({ resourceId, reason: value })
+  ElMessage.success('申请已提交')
+  await loadData()
+}
+
+onMounted(loadData)
+</script>
