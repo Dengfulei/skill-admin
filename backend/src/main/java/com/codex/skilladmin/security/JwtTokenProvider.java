@@ -4,6 +4,7 @@ import com.codex.skilladmin.config.AppProperties;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import io.jsonwebtoken.security.WeakKeyException;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
@@ -24,7 +25,16 @@ public class JwtTokenProvider {
 
     public JwtTokenProvider(AppProperties appProperties) {
         this.appProperties = appProperties;
-        this.secretKey = Keys.hmacShaKeyFor(appProperties.getSecret().getBytes(StandardCharsets.UTF_8));
+        String secret = appProperties.getSecret();
+        if (secret == null || secret.isBlank()) {
+            throw new IllegalStateException("Missing JWT secret. Configure app.jwt.secret or JWT_SECRET before starting the application.");
+        }
+
+        try {
+            this.secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+        } catch (WeakKeyException ex) {
+            throw new IllegalStateException("app.jwt.secret must be at least 32 bytes long for JWT signing.", ex);
+        }
     }
 
     public String createToken(AuthenticatedUser user) {
