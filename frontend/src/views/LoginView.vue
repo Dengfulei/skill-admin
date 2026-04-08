@@ -29,7 +29,7 @@
         </div>
         <el-form :model="form" label-position="top" @submit.prevent="handleLogin">
           <el-form-item label="用户名">
-            <el-input v-model="form.username" placeholder="admin / sales_admin / sales_user / hr_user / alice" />
+            <el-input v-model="form.username" placeholder="admin / sales_admin / tech_admin / dengfulei / alice" />
           </el-form-item>
           <el-form-item label="密码">
             <el-input v-model="form.password" show-password placeholder="默认 123456" />
@@ -43,8 +43,10 @@
           <ul>
             <li><code>admin</code><span>系统管理员</span></li>
             <li><code>sales_admin</code><span>销售部管理员</span></li>
+            <li><code>tech_admin</code><span>技术部管理员</span></li>
             <li><code>sales_user</code><span>销售部员工</span></li>
             <li><code>hr_user</code><span>人事部员工</span></li>
+            <li><code>dengfulei</code><span>技术部员工</span></li>
             <li><code>alice</code><span>个人用户</span></li>
           </ul>
         </div>
