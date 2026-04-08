@@ -1,0 +1,270 @@
+# AI 过程记录台账
+
+## 文档目的
+
+本文档用于作为“AI 辅助编程过程记录”的证据型材料，强调过程留痕，而不仅是结果说明。内容覆盖：
+
+- 阶段目标
+- 示例提示词
+- AI 产出摘要
+- 人工修正点
+- 对应落地文件
+- 验证动作
+
+## 项目信息
+
+- 题目：V03｜Skill/MCP 配置数据库化与权限管控
+- 技术栈：Spring Boot 3、MySQL 8.0、Vue3、Element Plus
+- 工作目录：`/Users/dengfulei/Desktop/codex-ai/skill-admin`
+- 主要 AI 工具：Codex
+
+## 阶段 1：题目分析与技术路线确认
+
+### 目标
+
+- 从赛题描述中抽取核心任务
+- 识别隐含考点
+- 形成可落地的技术路线
+
+### 示例提示词
+
+```text
+请仔细分析一下这题如何处理
+```
+
+后续约束补充：
+
+```text
+数据库使用 Mysql
+后端：Spring Boot 3 + MySQL
+前端：Vue3 + Element Plus
+数据库：MySQL 8.0 如何处理
+```
+
+### AI 产出摘要
+
+- 提炼出 6 项核心任务：数据库化、三级权限、管理台、用户侧、运行时鉴权、AI 过程记录
+- 建议按“统一资源主表 + 详情表 + 权限表 + 申请表”进行建模
+- 给出从 0 开始的实施顺序
+
+### 人工修正点
+
+- 明确使用 `Spring Boot 3 + MySQL 8.0 + Vue3 + Element Plus`
+- 明确项目需要同时满足“能跑”和“能答辩”
+
+### 对应产出
+
+- [README.md](/Users/dengfulei/Desktop/codex-ai/skill-admin/README.md)
+- [schema-design.md](/Users/dengfulei/Desktop/codex-ai/skill-admin/docs/schema-design.md)
+
+## 阶段 2：数据库模型设计
+
+### 目标
+
+- 将 Skill / MCP 文件配置迁移到数据库
+- 支撑公共 / 部门 / 个人三级权限与申请流
+
+### 示例提示词
+
+```text
+请按照这个技术栈进行处理
+```
+
+### AI 产出摘要
+
+- 设计 `skill_resource` 主表
+- 设计 `skill_config`、`mcp_config` 详情表
+- 设计 `resource_permission`、`resource_apply` 权限与申请表
+- 输出 Flyway 初始化 SQL 和种子数据
+
+### 人工修正点
+
+- 采用 MySQL `JSON` 字段保存原始配置
+- 为部门级资源增加 `approval_required`
+- 将演示账号和种子数据设计成便于录屏的结构
+
+### 对应产出
+
+- [V1__init_schema.sql](/Users/dengfulei/Desktop/codex-ai/skill-admin/backend/src/main/resources/db/migration/V1__init_schema.sql)
+- [V2__seed_demo_data.sql](/Users/dengfulei/Desktop/codex-ai/skill-admin/backend/src/main/resources/db/migration/V2__seed_demo_data.sql)
+- [schema-design.md](/Users/dengfulei/Desktop/codex-ai/skill-admin/docs/schema-design.md)
+
+### 验证动作
+
+- 使用真实 MySQL 启动后端
+- Flyway 成功执行 2 条迁移
+
+## 阶段 3：后端 API 与权限链路实现
+
+### 目标
+
+- 落地登录、资源管理、权限分配、申请审批、运行时鉴权
+
+### 示例提示词
+
+```text
+请按照这个技术栈进行处理
+```
+
+### AI 产出摘要
+
+- 生成 Spring Boot 工程骨架
+- 生成 Entity / Repository / Service / Controller
+- 实现 JWT 鉴权
+- 实现资源 CRUD、审批流、运行时调用校验接口
+
+### 人工修正点
+
+- 修正 JWT 中集合类型的解析
+- 修正默认布尔值处理
+- 使用真实账号启动后端并验证登录接口、资源接口、审批流接口
+
+### 对应产出
+
+- [SkillAdminApplication.java](/Users/dengfulei/Desktop/codex-ai/skill-admin/backend/src/main/java/com/codex/skilladmin/SkillAdminApplication.java)
+- [AuthService.java](/Users/dengfulei/Desktop/codex-ai/skill-admin/backend/src/main/java/com/codex/skilladmin/auth/AuthService.java)
+- [ResourceService.java](/Users/dengfulei/Desktop/codex-ai/skill-admin/backend/src/main/java/com/codex/skilladmin/resource/ResourceService.java)
+- [AccessRequestService.java](/Users/dengfulei/Desktop/codex-ai/skill-admin/backend/src/main/java/com/codex/skilladmin/apply/AccessRequestService.java)
+- [RuntimeInvokeController.java](/Users/dengfulei/Desktop/codex-ai/skill-admin/backend/src/main/java/com/codex/skilladmin/runtime/RuntimeInvokeController.java)
+
+### 验证动作
+
+- `admin` 登录成功
+- `sales_user` 初始仅看到公共资源
+- `hr_user` 调用销售 MCP 被拒绝
+- 销售申请经审批后再次调用鉴权通过
+
+## 阶段 4：前端页面生成与优化
+
+### 目标
+
+- 快速搭建管理端和用户端页面
+- 后续再进行字体、留白、可读性和响应式优化
+
+### 示例提示词
+
+```text
+对前端页面进行优化，1、页面字体清晰 2、字体不能不遮挡，3、符合web设计规范
+```
+
+以及指定技能：
+
+```text
+[$frontend-skill](...)
+```
+
+### AI 产出摘要
+
+- 生成登录页、布局页、资源管理页、申请审批页、我的可用资源页、部门技能申请页
+- 重构全局字体和容器样式
+- 调整信息层级与表格展示方式
+
+### 人工修正点
+
+- 根据实际页面截图修复 header 高度导致的标题遮挡问题
+- 将登录页和后台页改成更稳定的双区和工作台布局
+- 保持前端风格更适合企业后台而不是营销页面
+
+### 对应产出
+
+- [MainLayout.vue](/Users/dengfulei/Desktop/codex-ai/skill-admin/frontend/src/layout/MainLayout.vue)
+- [LoginView.vue](/Users/dengfulei/Desktop/codex-ai/skill-admin/frontend/src/views/LoginView.vue)
+- [ResourceManageView.vue](/Users/dengfulei/Desktop/codex-ai/skill-admin/frontend/src/views/admin/ResourceManageView.vue)
+- [ApplicationReviewView.vue](/Users/dengfulei/Desktop/codex-ai/skill-admin/frontend/src/views/admin/ApplicationReviewView.vue)
+- [MyResourcesView.vue](/Users/dengfulei/Desktop/codex-ai/skill-admin/frontend/src/views/user/MyResourcesView.vue)
+- [DepartmentApplyView.vue](/Users/dengfulei/Desktop/codex-ai/skill-admin/frontend/src/views/user/DepartmentApplyView.vue)
+- [main.css](/Users/dengfulei/Desktop/codex-ai/skill-admin/frontend/src/styles/main.css)
+
+### 验证动作
+
+- 前端 `npm run build` 成功
+- 本地 `http://localhost:5173` 可访问
+
+## 阶段 5：真实 Skill / MCP 配置分析与入库补充
+
+### 目标
+
+- 不只完成演示数据，还验证数据库模型能否承接真实 Codex 本地配置
+
+### 示例提示词
+
+```text
+分析本机 Codex Skill/MCP 配置并入库
+```
+
+### AI 产出摘要
+
+- 分析 `~/.codex/skills`、`~/.agents/skills` 和 `~/.codex/config.toml`
+- 识别本机 Skills 与 MCP 配置来源
+- 形成数据库映射方案并完成入库
+
+### 人工修正点
+
+- 标记异常 YAML 的 Skill 为 `DRAFT`
+- 保留原演示数据，不覆盖比赛主链路
+
+### 对应产出
+
+- [session-skills-mcp-import.md](/Users/dengfulei/Desktop/codex-ai/skill-admin/docs/session-skills-mcp-import.md)
+
+## 阶段 6：交付文档与答辩材料整理
+
+### 目标
+
+- 整理 Schema 设计文档
+- 整理接口说明
+- 整理演示脚本
+- 整理 AI 使用说明和过程记录
+
+### 示例提示词
+
+```text
+检查一下交付清单是否齐全
+```
+
+### AI 产出摘要
+
+- 识别当前已具备的交付物
+- 指出缺失的演示视频和压缩包
+- 建议补强 AI 过程记录
+
+### 人工修正点
+
+- 决定补充本过程台账与提交检查表
+
+### 对应产出
+
+- [api-overview.md](/Users/dengfulei/Desktop/codex-ai/skill-admin/docs/api-overview.md)
+- [demo-script.md](/Users/dengfulei/Desktop/codex-ai/skill-admin/docs/demo-script.md)
+- [ai-usage.md](/Users/dengfulei/Desktop/codex-ai/skill-admin/docs/ai-usage.md)
+- [delivery-checklist.md](/Users/dengfulei/Desktop/codex-ai/skill-admin/docs/delivery-checklist.md)
+
+## AI 产出与人工校验边界
+
+下列内容可以由 AI 快速生成初稿：
+
+- SQL 草案
+- CRUD 页面
+- 接口骨架
+- 文档初稿
+- 演示步骤梳理
+
+下列内容必须人工校验：
+
+- 权限语义是否正确
+- 数据模型是否可扩展
+- 运行时鉴权是否真正落在服务端
+- 页面是否符合实际演示场景
+- 交付物是否满足比赛要求
+
+## 过程结论
+
+本项目的 AI 使用并非停留在“生成几段代码”，而是形成了完整闭环：
+
+1. AI 参与需求拆解和技术路线确定
+2. AI 参与数据库建模和系统骨架生成
+3. AI 参与前后端实现与联调修复
+4. AI 参与文档与交付材料整理
+5. 人工对业务边界、权限正确性和交付完整性进行最终把关
+
+这套过程材料可直接作为“AI 辅助编程（Codex）应用说明”的补充证明。

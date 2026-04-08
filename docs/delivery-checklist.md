@@ -1,0 +1,90 @@
+# 交付检查表
+
+## 交付包命名
+
+- 压缩包命名格式：`姓名-题目.zip`
+- 示例：`张三-V03｜SkillMCP配置数据库化与权限管控.zip`
+
+## 目录建议
+
+```text
+姓名-题目/
+├── backend/
+├── frontend/
+├── docs/
+├── 演示视频.mp4
+└── README.md
+```
+
+## 必交项目核对
+
+### 1. 完整可运行系统
+
+- [x] MySQL 建表与初始化脚本
+- [x] Spring Boot 3 后端 API
+- [x] Vue3 + Element Plus 前端管理界面
+- [x] 启动说明
+
+对应文件：
+
+- [backend](/Users/dengfulei/Desktop/codex-ai/skill-admin/backend)
+- [frontend](/Users/dengfulei/Desktop/codex-ai/skill-admin/frontend)
+- [README.md](/Users/dengfulei/Desktop/codex-ai/skill-admin/README.md)
+
+### 2. 数据库 Schema 设计文档
+
+- [x] 设计目标
+- [x] 建表 SQL
+- [x] ER 图
+- [x] 设计决策说明
+
+对应文件：
+
+- [schema-design.md](/Users/dengfulei/Desktop/codex-ai/skill-admin/docs/schema-design.md)
+
+### 3. 演示视频（5 分钟内）
+
+- [ ] 录制管理员配置三级技能
+- [ ] 录制不同角色看到不同技能集
+- [ ] 录制运行时鉴权生效
+- [ ] 时长控制在 5 分钟内
+
+建议文件名：
+
+- `演示视频.mp4`
+
+录制脚本参考：
+
+- [demo-script.md](/Users/dengfulei/Desktop/codex-ai/skill-admin/docs/demo-script.md)
+
+### 4. AI 辅助编程（Codex）应用说明文档
+
+- [x] 使用目标
+- [x] 阶段说明
+- [x] AI 产出与人工修正
+- [x] 过程台账
+
+对应文件：
+
+- [ai-usage.md](/Users/dengfulei/Desktop/codex-ai/skill-admin/docs/ai-usage.md)
+- [ai-process-record.md](/Users/dengfulei/Desktop/codex-ai/skill-admin/docs/ai-process-record.md)
+- [session-skills-mcp-import.md](/Users/dengfulei/Desktop/codex-ai/skill-admin/docs/session-skills-mcp-import.md)
+
+## 建议附加材料
+
+- [x] 接口说明文档
+- [x] 交付检查表
+
+对应文件：
+
+- [api-overview.md](/Users/dengfulei/Desktop/codex-ai/skill-admin/docs/api-overview.md)
+- [delivery-checklist.md](/Users/dengfulei/Desktop/codex-ai/skill-admin/docs/delivery-checklist.md)
+
+## 提交前最终确认
+
+- [ ] 后端可启动
+- [ ] 前端可启动
+- [ ] MySQL 可执行迁移
+- [ ] 演示账号可登录
+- [ ] 视频文件已放入交付目录
+- [ ] 压缩包已按要求命名
