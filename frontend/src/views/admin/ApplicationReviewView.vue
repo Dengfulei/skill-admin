@@ -1,32 +1,32 @@
 <template>
-  <div class="page-card" style="padding: 20px">
-    <div class="toolbar">
-      <div>
-        <h3 style="margin: 0 0 4px">待审批部门技能申请</h3>
-        <p style="margin: 0; color: #64748b">部门管理员仅能看到本部门申请，系统管理员可查看全部。</p>
-      </div>
+  <div class="page-card page-panel">
+    <div class="section-heading">
+      <h3>待审批部门技能申请</h3>
+      <p>部门管理员仅能查看本部门申请，系统管理员可统览全部申请并完成最终授权。</p>
     </div>
-    <el-table :data="applications" border>
-      <el-table-column prop="resourceName" label="资源名称" min-width="180" />
-      <el-table-column prop="applicantUserId" label="申请人 ID" width="110" />
-      <el-table-column prop="departmentId" label="部门 ID" width="110" />
-      <el-table-column prop="reason" label="申请理由" min-width="220" />
-      <el-table-column label="状态" width="120">
-        <template #default="{ row }">
-          <el-tag :type="statusTag(row.status)">{{ row.status }}</el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column prop="reviewComment" label="审批意见" min-width="180" />
-      <el-table-column label="操作" width="170">
-        <template #default="{ row }">
-          <el-space v-if="row.status === 'PENDING'">
-            <el-button link type="success" @click="review(row.id, true)">通过</el-button>
-            <el-button link type="danger" @click="review(row.id, false)">驳回</el-button>
-          </el-space>
-          <span v-else>已处理</span>
-        </template>
-      </el-table-column>
-    </el-table>
+    <div class="data-table">
+      <el-table :data="applications" border>
+        <el-table-column prop="resourceName" label="资源名称" min-width="180" />
+        <el-table-column prop="applicantUserId" label="申请人 ID" width="110" />
+        <el-table-column prop="departmentId" label="部门 ID" width="110" />
+        <el-table-column prop="reason" label="申请理由" min-width="220" />
+        <el-table-column label="状态" width="120">
+          <template #default="{ row }">
+            <el-tag :type="statusTag(row.status)">{{ row.status }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="reviewComment" label="审批意见" min-width="180" />
+        <el-table-column label="操作" width="170">
+          <template #default="{ row }">
+            <el-space v-if="row.status === 'PENDING'">
+              <el-button link type="success" @click="review(row.id, true)">通过</el-button>
+              <el-button link type="danger" @click="review(row.id, false)">驳回</el-button>
+            </el-space>
+            <span class="muted-text" v-else>已处理</span>
+          </template>
+        </el-table-column>
+      </el-table>
+    </div>
   </div>
 </template>
 

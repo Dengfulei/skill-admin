@@ -1,27 +1,45 @@
 <template>
-  <el-container style="min-height: 100vh">
-    <el-aside width="240px" class="aside">
-      <div class="brand">
+  <el-container class="app-shell">
+    <el-aside width="256px" class="aside">
+      <div class="brand-block">
+        <span class="brand-kicker">Codex Console</span>
         <h2>Skill Admin</h2>
-        <p>三级权限配置中心</p>
+        <p>数据库化技能中心与三级权限控制工作台</p>
       </div>
       <el-menu :default-active="route.path" router class="menu">
-        <el-menu-item index="/user/resources">我的可用技能</el-menu-item>
-        <el-menu-item index="/user/applications">部门技能申请</el-menu-item>
-        <el-menu-item v-if="authStore.isManager" index="/admin/resources">资源管理</el-menu-item>
-        <el-menu-item v-if="authStore.isManager" index="/admin/applications">申请审批</el-menu-item>
+        <el-menu-item index="/user/resources">
+          <span>我的可用技能</span>
+        </el-menu-item>
+        <el-menu-item index="/user/applications">
+          <span>部门技能申请</span>
+        </el-menu-item>
+        <el-menu-item v-if="authStore.isManager" index="/admin/resources">
+          <span>资源管理</span>
+        </el-menu-item>
+        <el-menu-item v-if="authStore.isManager" index="/admin/applications">
+          <span>申请审批</span>
+        </el-menu-item>
       </el-menu>
+      <div class="aside-note">
+        <h4>当前模式</h4>
+        <p>公共级、部门级、个人级资源统一在数据库中维护与授权。</p>
+      </div>
     </el-aside>
-    <el-container>
+    <el-container class="content-shell">
       <el-header class="header">
-        <div>
+        <div class="header-copy">
+          <span class="header-kicker">Workspace</span>
           <h3>{{ pageTitle }}</h3>
           <p>{{ subtitle }}</p>
         </div>
-        <div class="user-info">
-          <el-tag type="success">{{ authStore.user?.displayName }}</el-tag>
-          <el-tag v-if="authStore.user?.systemAdmin" type="danger">系统管理员</el-tag>
-          <el-tag v-else-if="authStore.user?.departmentAdminIds?.length" type="warning">部门管理员</el-tag>
+        <div class="user-info page-card">
+          <div class="identity-copy">
+            <strong>{{ authStore.user?.displayName }}</strong>
+            <span>{{ authStore.user?.username }}</span>
+          </div>
+          <el-tag type="danger" v-if="authStore.user?.systemAdmin">系统管理员</el-tag>
+          <el-tag type="warning" v-else-if="authStore.user?.departmentAdminIds?.length">部门管理员</el-tag>
+          <el-tag type="success" v-else>普通用户</el-tag>
           <el-button link type="primary" @click="handleLogout">退出登录</el-button>
         </div>
       </el-header>
@@ -58,25 +76,49 @@ function handleLogout() {
 </script>
 
 <style scoped>
+.app-shell {
+  min-height: 100vh;
+}
+
 .aside {
-  background: linear-gradient(180deg, #0f172a, #111827);
-  color: #fff;
-  padding: 20px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 22px 16px;
+  background: linear-gradient(180deg, #0f172a, #111827 72%);
+  color: #f8fafc;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.brand {
-  padding: 12px 12px 20px;
+.brand-block {
+  padding: 10px 12px 8px;
 }
 
-.brand h2 {
+.brand-kicker,
+.header-kicker {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.brand-kicker {
+  color: rgba(148, 163, 184, 0.92);
+}
+
+.brand-block h2 {
+  margin: 10px 0 8px;
+  font-size: 28px;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+}
+
+.brand-block p {
   margin: 0;
-  font-size: 24px;
-}
-
-.brand p {
-  margin: 8px 0 0;
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 13px;
+  font-size: 14px;
+  line-height: 1.7;
+  color: rgba(226, 232, 240, 0.78);
 }
 
 .menu {
@@ -84,22 +126,74 @@ function handleLogout() {
   background: transparent;
 }
 
+.menu :deep(.el-menu-item) {
+  height: 46px;
+  border-radius: 12px;
+  margin-bottom: 6px;
+  color: rgba(226, 232, 240, 0.84);
+}
+
+.menu :deep(.el-menu-item:hover),
+.menu :deep(.el-menu-item.is-active) {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.aside-note {
+  margin-top: auto;
+  padding: 16px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.aside-note h4 {
+  margin: 0 0 6px;
+  font-size: 13px;
+}
+
+.aside-note p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.7;
+  color: rgba(226, 232, 240, 0.72);
+}
+
+.content-shell {
+  min-width: 0;
+}
+
 .header {
+  height: auto;
+  min-height: 108px;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  padding: 22px 28px 12px;
+  gap: 16px;
+  padding: 24px 28px 14px;
   background: transparent;
 }
 
-.header h3 {
-  margin: 0;
-  font-size: 24px;
+.header-copy {
+  min-width: 0;
 }
 
-.header p {
-  margin: 6px 0 0;
-  color: #64748b;
+.header-kicker {
+  color: #5b6a84;
+}
+
+.header-copy h3 {
+  margin: 8px 0 6px;
+  color: #0f172a;
+  font-size: 28px;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+}
+
+.header-copy p {
+  margin: 0;
+  color: #5e6b81;
+  font-size: 14px;
 }
 
 .main {
@@ -111,5 +205,44 @@ function handleLogout() {
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+  padding: 14px 16px;
+  border-radius: 18px;
+}
+
+.identity-copy {
+  display: grid;
+  gap: 2px;
+  margin-right: 2px;
+}
+
+.identity-copy strong {
+  color: #0f172a;
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.identity-copy span {
+  color: #66758c;
+  font-size: 12px;
+}
+
+@media (max-width: 960px) {
+  .app-shell {
+    flex-direction: column;
+  }
+
+  .aside {
+    width: 100% !important;
+  }
+
+  .header {
+    height: auto;
+    min-height: unset;
+    padding: 20px 18px 12px;
+  }
+
+  .main {
+    padding: 0 18px 18px;
+  }
 }
 </style>

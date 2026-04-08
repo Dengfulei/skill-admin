@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="surface-stack">
     <div class="metric-grid">
       <div class="metric-item">
         <h4>当前可管理资源</h4>
@@ -15,14 +15,25 @@
       </div>
     </div>
 
-    <div class="page-card" style="padding: 20px">
+    <div class="page-card page-panel">
       <div class="toolbar">
-        <el-input v-model="keyword" placeholder="按名称/编码过滤" style="width: 280px" clearable />
-        <el-button type="primary" @click="openCreate">新建资源</el-button>
+        <div class="section-heading">
+          <h3>Skill / MCP 资源列表</h3>
+          <p>集中维护资源定义、归属范围、启用状态和默认授权策略。</p>
+        </div>
+        <div class="toolbar-main">
+          <el-input v-model="keyword" placeholder="按名称或编码过滤" class="search-input" clearable />
+          <el-button type="primary" @click="openCreate">新建资源</el-button>
+        </div>
       </div>
-      <el-table :data="filteredResources" border>
-        <el-table-column prop="name" label="名称" min-width="180" />
-        <el-table-column prop="code" label="编码" min-width="180" />
+      <div class="data-table">
+        <el-table :data="filteredResources" border>
+          <el-table-column prop="name" label="名称" min-width="180" />
+          <el-table-column label="编码" min-width="180">
+            <template #default="{ row }">
+              <span class="code-text">{{ row.code }}</span>
+            </template>
+          </el-table-column>
         <el-table-column prop="resourceType" label="类型" width="90" />
         <el-table-column prop="scopeLevel" label="范围" width="110" />
         <el-table-column prop="status" label="状态" width="110" />
@@ -47,7 +58,8 @@
             </el-space>
           </template>
         </el-table-column>
-      </el-table>
+        </el-table>
+      </div>
     </div>
 
     <ResourceDialog
@@ -130,3 +142,15 @@ async function remove(id: number) {
 
 onMounted(loadData)
 </script>
+
+<style scoped>
+.search-input {
+  width: 300px;
+}
+
+@media (max-width: 720px) {
+  .search-input {
+    width: 100%;
+  }
+}
+</style>

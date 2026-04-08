@@ -2,9 +2,13 @@
   <el-dialog
     :model-value="visible"
     :title="model.id ? '编辑资源' : '新建资源'"
-    width="860px"
+    width="min(920px, calc(100vw - 32px))"
     @close="emit('close')"
   >
+    <div class="dialog-intro">
+      <h4>资源基础信息</h4>
+      <p>统一维护资源类型、归属范围、运行配置与默认授权，确保后续展示和鉴权结果一致。</p>
+    </div>
     <el-form label-width="110px" :model="model">
       <el-row :gutter="16">
         <el-col :span="12">
@@ -299,3 +303,30 @@ function handleSubmit() {
   }, model.id)
 }
 </script>
+
+<style scoped>
+.dialog-intro {
+  margin-bottom: 18px;
+}
+
+.dialog-intro h4 {
+  margin: 0 0 6px;
+  color: #0f172a;
+  font-size: 18px;
+  line-height: 1.2;
+}
+
+.dialog-intro p {
+  margin: 0;
+  color: #5e6b81;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+@media (max-width: 768px) {
+  :deep(.el-form-item__content > .el-select),
+  :deep(.el-form-item__content > .el-input-number) {
+    width: 100%;
+  }
+}
+</style>

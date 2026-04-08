@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="surface-stack">
     <div class="metric-grid">
       <div class="metric-item">
         <h4>我的可用资源</h4>
@@ -18,29 +18,33 @@
         <p>{{ personalCount }}</p>
       </div>
     </div>
-    <div class="page-card" style="padding: 20px">
-      <div class="toolbar">
-        <div>
-          <h3 style="margin: 0 0 4px">当前用户可用技能列表</h3>
-          <p style="margin: 0; color: #64748b">数据来自公共授权、所在部门授权以及个人授权汇总。</p>
-        </div>
+    <div class="page-card page-panel">
+      <div class="section-heading">
+        <h3>当前用户可用技能列表</h3>
+        <p>资源集合由公共授权、所属部门授权和个人授权三部分自动汇总得出。</p>
       </div>
-      <el-table :data="resources" border>
-        <el-table-column prop="name" label="资源名称" min-width="200" />
-        <el-table-column prop="code" label="编码" min-width="180" />
-        <el-table-column prop="resourceType" label="类型" width="90" />
-        <el-table-column label="范围" width="100">
-          <template #default="{ row }">
-            <el-tag>{{ row.scopeLevel }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="description" label="说明" min-width="220" />
-        <el-table-column label="模拟调用" width="150">
-          <template #default="{ row }">
-            <el-button type="primary" plain @click="invoke(row.code)">运行鉴权</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+      <div class="data-table">
+        <el-table :data="resources" border>
+          <el-table-column prop="name" label="资源名称" min-width="200" />
+          <el-table-column label="编码" min-width="180">
+            <template #default="{ row }">
+              <span class="code-text">{{ row.code }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="resourceType" label="类型" width="90" />
+          <el-table-column label="范围" width="100">
+            <template #default="{ row }">
+              <el-tag>{{ row.scopeLevel }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="description" label="说明" min-width="220" />
+          <el-table-column label="模拟调用" width="150">
+            <template #default="{ row }">
+              <el-button type="primary" plain @click="invoke(row.code)">运行鉴权</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
     </div>
   </div>
 </template>

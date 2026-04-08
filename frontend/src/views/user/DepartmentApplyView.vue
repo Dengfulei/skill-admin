@@ -1,30 +1,42 @@
 <template>
-  <div class="page-card" style="padding: 20px">
+  <div class="page-card page-panel">
+    <div class="section-heading">
+      <h3>部门技能申请</h3>
+      <p>查看当前部门可申请的资源，并跟踪已提交申请的审批进度。</p>
+    </div>
     <el-tabs>
       <el-tab-pane label="可申请部门技能">
-        <el-table :data="catalog" border>
-          <el-table-column prop="name" label="资源名称" min-width="180" />
-          <el-table-column prop="code" label="编码" min-width="180" />
-          <el-table-column prop="resourceType" label="类型" width="90" />
-          <el-table-column prop="description" label="说明" min-width="220" />
-          <el-table-column label="操作" width="200">
-            <template #default="{ row }">
-              <el-button type="primary" plain @click="apply(row.id)">提交申请</el-button>
-            </template>
-          </el-table-column>
-        </el-table>
+        <div class="data-table">
+          <el-table :data="catalog" border>
+            <el-table-column prop="name" label="资源名称" min-width="180" />
+            <el-table-column label="编码" min-width="180">
+              <template #default="{ row }">
+                <span class="code-text">{{ row.code }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="resourceType" label="类型" width="90" />
+            <el-table-column prop="description" label="说明" min-width="220" />
+            <el-table-column label="操作" width="200">
+              <template #default="{ row }">
+                <el-button type="primary" plain @click="apply(row.id)">提交申请</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
       </el-tab-pane>
       <el-tab-pane label="我的申请记录">
-        <el-table :data="applications" border>
-          <el-table-column prop="resourceName" label="资源名称" min-width="180" />
-          <el-table-column prop="reason" label="申请理由" min-width="220" />
-          <el-table-column label="状态" width="120">
-            <template #default="{ row }">
-              <el-tag :type="statusTag(row.status)">{{ row.status }}</el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column prop="reviewComment" label="审批意见" min-width="220" />
-        </el-table>
+        <div class="data-table">
+          <el-table :data="applications" border>
+            <el-table-column prop="resourceName" label="资源名称" min-width="180" />
+            <el-table-column prop="reason" label="申请理由" min-width="220" />
+            <el-table-column label="状态" width="120">
+              <template #default="{ row }">
+                <el-tag :type="statusTag(row.status)">{{ row.status }}</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="reviewComment" label="审批意见" min-width="220" />
+          </el-table>
+        </div>
       </el-tab-pane>
     </el-tabs>
   </div>
