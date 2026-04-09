@@ -77,13 +77,13 @@ npm run dev
 
 ## 文档
 
-- [数据库设计文档](/Users/dengfulei/Desktop/codex-ai/skill-admin/docs/schema-design.md)
-- [接口与权限说明](/Users/dengfulei/Desktop/codex-ai/skill-admin/docs/api-overview.md)
-- [AI 调用工具权限验证测试记录](/Users/dengfulei/Desktop/codex-ai/skill-admin/docs/ai-runtime-permission-verification.md)
-- [演示脚本](/Users/dengfulei/Desktop/codex-ai/skill-admin/docs/demo-script.md)
-- [AI 辅助编程说明](/Users/dengfulei/Desktop/codex-ai/skill-admin/docs/ai-usage.md)
-- [AI 过程记录台账](/Users/dengfulei/Desktop/codex-ai/skill-admin/docs/ai-process-record.md)
-- [交付检查表](/Users/dengfulei/Desktop/codex-ai/skill-admin/docs/delivery-checklist.md)
+- [数据库设计文档](/Users/dengfulei/Desktop/codex-ai/skill-admin/docs/数据库设计文档.md)
+- [接口与权限说明](/Users/dengfulei/Desktop/codex-ai/skill-admin/docs/接口与权限说明.md)
+- [运行时权限验证测试记录](/Users/dengfulei/Desktop/codex-ai/skill-admin/docs/运行时权限验证测试记录.md)
+- [演示脚本](/Users/dengfulei/Desktop/codex-ai/skill-admin/docs/演示脚本.md)
+- [智能辅助编程说明](/Users/dengfulei/Desktop/codex-ai/skill-admin/docs/智能辅助编程说明.md)
+- [智能辅助编程过程记录台账](/Users/dengfulei/Desktop/codex-ai/skill-admin/docs/智能辅助编程过程记录台账.md)
+- [交付检查表](/Users/dengfulei/Desktop/codex-ai/skill-admin/docs/交付检查表.md)
 
 ## 当前说明
 
