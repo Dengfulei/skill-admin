@@ -23,6 +23,11 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/user/DepartmentApplyView.vue')
       },
       {
+        path: 'user/manage-resources',
+        name: 'user-manage-resources',
+        component: () => import('@/views/admin/ResourceManageView.vue')
+      },
+      {
         path: 'admin/resources',
         name: 'admin-resources',
         component: () => import('@/views/admin/ResourceManageView.vue')
@@ -54,6 +59,9 @@ router.beforeEach(async (to) => {
   }
   if (!authStore.user) {
     await authStore.fetchCurrentUser()
+  }
+  if (to.path === '/admin/resources' && !authStore.isManager) {
+    return '/user/manage-resources'
   }
   if (to.path.startsWith('/admin') && !authStore.isManager) {
     return '/user/resources'

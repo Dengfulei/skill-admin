@@ -9,6 +9,7 @@ import com.codex.skilladmin.resource.ResourceRepository;
 import com.codex.skilladmin.resource.ResourceService;
 import com.codex.skilladmin.resource.ScopeLevel;
 import com.codex.skilladmin.security.AuthenticatedUser;
+import com.codex.skilladmin.user.UserDepartmentRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
@@ -23,17 +24,20 @@ public class AccessRequestService {
     private final ResourceService resourceService;
     private final ResourceRepository resourceRepository;
     private final ResourcePermissionRepository resourcePermissionRepository;
+    private final UserDepartmentRepository userDepartmentRepository;
 
     public AccessRequestService(
             AccessRequestRepository accessRequestRepository,
             ResourceService resourceService,
             ResourceRepository resourceRepository,
-            ResourcePermissionRepository resourcePermissionRepository
+            ResourcePermissionRepository resourcePermissionRepository,
+            UserDepartmentRepository userDepartmentRepository
     ) {
         this.accessRequestRepository = accessRequestRepository;
         this.resourceService = resourceService;
         this.resourceRepository = resourceRepository;
         this.resourcePermissionRepository = resourcePermissionRepository;
+        this.userDepartmentRepository = userDepartmentRepository;
     }
 
     @Transactional
@@ -107,6 +111,9 @@ public class AccessRequestService {
         accessRequestRepository.save(entity);
 
         if (entity.getStatus() == AccessRequestStatus.APPROVED) {
+            if (!userDepartmentRepository.existsByUserIdAndDepartmentIdAndDeletedFalse(entity.getApplicantUserId(), entity.getDepartmentId())) {
+                throw new BusinessException("申请人已不在该部门，不能继续授权");
+            }
             ResourcePermissionEntity permission = new ResourcePermissionEntity();
             permission.setResourceId(entity.getResourceId());
             permission.setTargetScope(ScopeLevel.PERSONAL);

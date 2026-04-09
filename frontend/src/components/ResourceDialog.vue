@@ -26,9 +26,12 @@
         <el-col :span="12">
           <el-form-item label="权限级别" required>
             <el-select v-model="model.scopeLevel">
-              <el-option label="公共级" value="PUBLIC" />
-              <el-option label="部门级" value="DEPARTMENT" />
-              <el-option label="个人级" value="PERSONAL" />
+              <el-option
+                v-for="item in availableScopeOptions"
+                :key="item.value"
+                :label="item.label"
+                :value="item.value"
+              />
             </el-select>
             <div class="field-tip">
               <span class="field-tag field-tag-required">必填</span>
@@ -68,18 +71,25 @@
         <el-col :span="12">
           <el-form-item label="所属部门" v-if="model.scopeLevel === 'DEPARTMENT'" required>
             <el-select v-model="model.ownerDepartmentId" clearable>
-              <el-option v-for="item in departments" :key="item.id" :label="item.name" :value="item.id" />
+              <el-option v-for="item in selectableDepartments" :key="item.id" :label="item.name" :value="item.id" />
             </el-select>
             <div class="field-tip">
               <span class="field-tag field-tag-required">必填</span>
               部门级资源需指定归属部门。
             </div>
           </el-form-item>
-          <el-form-item label="所属用户" v-if="model.scopeLevel === 'PERSONAL'">
+          <el-form-item label="所属用户" v-if="model.scopeLevel === 'PERSONAL' && isSystemAdmin">
             <el-input-number v-model="model.ownerUserId" :min="1" />
             <div class="field-tip">
               <span class="field-tag">选填</span>
               个人级资源可指定归属用户，不填默认当前用户。
+            </div>
+          </el-form-item>
+          <el-form-item label="所属用户" v-else-if="model.scopeLevel === 'PERSONAL'">
+            <el-input :model-value="personalOwnerLabel" disabled />
+            <div class="field-tip">
+              <span class="field-tag">固定</span>
+              个人级资源仅归属当前登录用户，并且仅本人可用。
             </div>
           </el-form-item>
         </el-col>
@@ -211,28 +221,43 @@
       </template>
 
       <el-divider>权限分配</el-divider>
-      <el-row :gutter="16">
+      <template v-if="model.scopeLevel === 'PUBLIC'">
+        <div class="field-tip">
+          <span class="field-tag">默认</span>
+          公共级资源会自动授权给全员，无需单独设置。
+        </div>
+      </template>
+      <template v-else-if="model.scopeLevel === 'PERSONAL'">
+        <div class="field-tip">
+          <span class="field-tag">默认</span>
+          个人级资源会自动授权给资源本人，系统不会放开给其他用户或部门。
+        </div>
+      </template>
+      <template v-else-if="model.approvalRequired">
+        <div class="field-tip">
+          <span class="field-tag">审批模式</span>
+          已开启申请后，资源不会预置任何可用权限，只能通过审批为个人开通。
+        </div>
+      </template>
+      <el-row v-else :gutter="16">
         <el-col :span="8">
           <el-form-item label="目标范围">
             <el-select v-model="model.permissionTargetScope" clearable placeholder="留空使用默认策略">
-              <el-option label="公共" value="PUBLIC" />
-              <el-option label="部门" value="DEPARTMENT" />
-              <el-option label="个人" value="PERSONAL" />
+              <el-option label="所属部门" value="DEPARTMENT" />
+              <el-option label="指定成员" value="PERSONAL" />
             </el-select>
             <div class="field-tip">
               <span class="field-tag">选填</span>
-              指定默认授权对象，留空走系统默认策略。
+              留空时按默认策略处理，不开启申请则全部门可用，开启申请则通过审批后按个人发放。
             </div>
           </el-form-item>
         </el-col>
         <el-col :span="8" v-if="model.permissionTargetScope === 'DEPARTMENT'">
-          <el-form-item label="授权部门" required>
-            <el-select v-model="model.permissionDepartmentId" clearable>
-              <el-option v-for="item in departments" :key="item.id" :label="item.name" :value="item.id" />
-            </el-select>
+          <el-form-item label="授权部门">
+            <el-input :model-value="selectedDepartmentName" disabled />
             <div class="field-tip">
-              <span class="field-tag field-tag-required">条件必填</span>
-              目标范围为部门时填写。
+              <span class="field-tag">固定</span>
+              部门级资源只能授权给所属部门。
             </div>
           </el-form-item>
         </el-col>
@@ -241,7 +266,7 @@
             <el-input-number v-model="model.permissionUserId" :min="1" />
             <div class="field-tip">
               <span class="field-tag field-tag-required">条件必填</span>
-              目标范围为个人时填写。
+              仅可授权给所属部门成员，后端会再次校验。
             </div>
           </el-form-item>
         </el-col>
@@ -255,8 +280,8 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, watch } from 'vue'
-import type { Department, ResourceDetail, ResourceUpsertRequest, ScopeLevel } from '@/types'
+import { computed, reactive, watch } from 'vue'
+import type { AuthenticatedUser, Department, ResourceDetail, ResourceUpsertRequest, ScopeLevel } from '@/types'
 
 interface ResourceDialogModel extends ResourceUpsertRequest {
   id?: number
@@ -267,6 +292,7 @@ interface ResourceDialogModel extends ResourceUpsertRequest {
 
 const props = defineProps<{
   visible: boolean
+  currentUser: AuthenticatedUser | null
   departments: Department[]
   detail?: ResourceDetail | null
 }>()
@@ -289,6 +315,90 @@ const model = reactive<ResourceDialogModel>({
   transportType: 'STDIO'
 })
 
+const isSystemAdmin = computed(() => Boolean(props.currentUser?.systemAdmin))
+const isDepartmentAdmin = computed(() => Boolean(props.currentUser?.departmentAdminIds?.length))
+const availableScopeOptions = computed(() => {
+  if (isSystemAdmin.value) {
+    return [
+      { label: '公共级', value: 'PUBLIC' as ScopeLevel },
+      { label: '部门级', value: 'DEPARTMENT' as ScopeLevel },
+      { label: '个人级', value: 'PERSONAL' as ScopeLevel }
+    ]
+  }
+  if (isDepartmentAdmin.value) {
+    return [
+      { label: '部门级', value: 'DEPARTMENT' as ScopeLevel },
+      { label: '个人级', value: 'PERSONAL' as ScopeLevel }
+    ]
+  }
+  return [{ label: '个人级', value: 'PERSONAL' as ScopeLevel }]
+})
+const selectableDepartments = computed(() => {
+  if (isSystemAdmin.value) {
+    return props.departments
+  }
+  const departmentAdminIds = props.currentUser?.departmentAdminIds ?? []
+  return props.departments.filter((item) => departmentAdminIds.includes(item.id))
+})
+const selectedDepartmentName = computed(() => {
+  return props.departments.find((item) => item.id === model.ownerDepartmentId)?.name ?? ''
+})
+const personalOwnerLabel = computed(() => props.currentUser?.displayName || props.currentUser?.username || '')
+
+function getDefaultScopeLevel(): ScopeLevel {
+  return availableScopeOptions.value[0]?.value ?? 'PERSONAL'
+}
+
+function normalizeModel() {
+  if (!availableScopeOptions.value.some((item) => item.value === model.scopeLevel)) {
+    model.scopeLevel = getDefaultScopeLevel()
+  }
+
+  if (model.scopeLevel !== 'DEPARTMENT') {
+    model.ownerDepartmentId = undefined
+    model.approvalRequired = false
+    model.permissionTargetScope = undefined
+    model.permissionDepartmentId = undefined
+    model.permissionUserId = undefined
+  } else {
+    if (model.approvalRequired) {
+      model.permissionTargetScope = undefined
+      model.permissionDepartmentId = undefined
+      model.permissionUserId = undefined
+    }
+    if (!isSystemAdmin.value) {
+      const fallbackDepartmentId = selectableDepartments.value[0]?.id
+      if (!model.ownerDepartmentId || !selectableDepartments.value.some((item) => item.id === model.ownerDepartmentId)) {
+        model.ownerDepartmentId = fallbackDepartmentId
+      }
+    }
+    if (model.approvalRequired) {
+      model.permissionDepartmentId = undefined
+      model.permissionUserId = undefined
+    } else if (model.permissionTargetScope === 'DEPARTMENT') {
+      model.permissionDepartmentId = model.ownerDepartmentId
+      model.permissionUserId = undefined
+    } else if (model.permissionTargetScope === 'PERSONAL') {
+      model.permissionDepartmentId = undefined
+    } else {
+      model.permissionDepartmentId = undefined
+      model.permissionUserId = undefined
+    }
+  }
+
+  if (model.scopeLevel !== 'PERSONAL') {
+    model.ownerUserId = undefined
+    return
+  }
+  if (!isSystemAdmin.value) {
+    model.ownerUserId = props.currentUser?.id
+    return
+  }
+  if (!model.ownerUserId) {
+    model.ownerUserId = props.currentUser?.id
+  }
+}
+
 watch(
   () => props.detail,
   (detail) => {
@@ -299,7 +409,7 @@ watch(
         name: '',
         code: '',
         description: '',
-        scopeLevel: 'PUBLIC',
+        scopeLevel: getDefaultScopeLevel(),
         ownerDepartmentId: undefined,
         ownerUserId: undefined,
         status: 'ACTIVE',
@@ -320,6 +430,7 @@ watch(
         permissionDepartmentId: undefined,
         permissionUserId: undefined
       })
+      normalizeModel()
       return
     }
     const firstPermission = detail.permissions?.[0]
@@ -350,16 +461,32 @@ watch(
       permissionDepartmentId: firstPermission?.departmentId,
       permissionUserId: firstPermission?.userId
     })
+    normalizeModel()
   },
   { immediate: true }
 )
 
+watch(
+  () => [props.currentUser, props.departments],
+  () => {
+    normalizeModel()
+  }
+)
+
+watch(
+  () => [model.scopeLevel, model.ownerDepartmentId, model.permissionTargetScope],
+  () => {
+    normalizeModel()
+  }
+)
+
 function handleSubmit() {
-  const permissions = model.permissionTargetScope
+  const permissions = model.scopeLevel === 'DEPARTMENT' && model.permissionTargetScope
+    && !model.approvalRequired
     ? [
         {
           targetScope: model.permissionTargetScope,
-          departmentId: model.permissionDepartmentId,
+          departmentId: model.permissionTargetScope === 'DEPARTMENT' ? model.ownerDepartmentId : undefined,
           userId: model.permissionUserId
         }
       ]

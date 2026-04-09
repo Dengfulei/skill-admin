@@ -18,8 +18,8 @@
     <div class="page-card page-panel">
       <div class="toolbar">
         <div class="section-heading">
-          <h3>Skill / MCP 资源列表</h3>
-          <p>集中维护资源定义、归属范围、启用状态和默认授权策略。</p>
+          <h3>{{ panelTitle }}</h3>
+          <p>{{ panelDescription }}</p>
         </div>
         <div class="toolbar-main">
           <el-radio-group v-model="resourceTypeFilter" @change="handleSearch">
@@ -89,6 +89,7 @@
 
     <ResourceDialog
       :visible="dialogVisible"
+      :current-user="authStore.user"
       :departments="departments"
       :detail="currentDetail"
       @close="dialogVisible = false"
@@ -98,8 +99,9 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { useRoute } from 'vue-router'
 import ResourceDialog from '@/components/ResourceDialog.vue'
 import {
   createResourceApi,
@@ -110,12 +112,15 @@ import {
   toggleResourceEnabledApi,
   updateResourceApi
 } from '@/api/modules'
+import { useAuthStore } from '@/stores/auth'
 import type { Department, ResourceDetail, ResourceListStats, ResourceSummary, ResourceType, ResourceUpsertRequest } from '@/types'
 
 type ResourceTypeFilter = 'ALL' | ResourceType
 
 const resources = ref<ResourceSummary[]>([])
 const departments = ref<Department[]>([])
+const route = useRoute()
+const authStore = useAuthStore()
 const keyword = ref('')
 const resourceTypeFilter = ref<ResourceTypeFilter>('ALL')
 const dialogVisible = ref(false)
@@ -131,6 +136,14 @@ const stats = reactive<ResourceListStats>({
   departmentCount: 0,
   personalCount: 0
 })
+
+const isPersonalManageMode = computed(() => route.path === '/user/manage-resources')
+const panelTitle = computed(() => (isPersonalManageMode.value ? '我的个人资源' : 'Skill / MCP 资源列表'))
+const panelDescription = computed(() =>
+  isPersonalManageMode.value
+    ? '创建和维护仅本人可用的个人 Skill / MCP 资源。'
+    : '集中维护资源定义、归属范围、启用状态和默认授权策略。'
+)
 
 async function loadData() {
   const [resourcePage, departmentList] = await Promise.all([

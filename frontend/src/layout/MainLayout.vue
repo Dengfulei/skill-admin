@@ -16,6 +16,9 @@
         <el-menu-item v-if="authStore.isManager" index="/admin/resources">
           <span>资源管理</span>
         </el-menu-item>
+        <el-menu-item v-else index="/user/manage-resources">
+          <span>个人资源管理</span>
+        </el-menu-item>
         <el-menu-item v-if="authStore.isManager" index="/admin/applications">
           <span>申请审批</span>
         </el-menu-item>
@@ -73,6 +76,10 @@ const titleMap: Record<string, [string, string]> = {
     "展示当前用户可访问的公共、部门与个人 Skill/MCP 资源",
   ],
   "/user/applications": ["部门技能申请", "提交部门级技能申请并跟踪审批状态"],
+  "/user/manage-resources": [
+    "个人资源管理",
+    "仅维护当前用户的个人 Skill/MCP 资源，并保持仅本人可用",
+  ],
   "/admin/resources": [
     "资源管理",
     "维护 Skill/MCP 资源、按三级权限分配与启停控制",

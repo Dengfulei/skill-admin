@@ -8,6 +8,7 @@ import com.codex.skilladmin.permission.PermissionType;
 import com.codex.skilladmin.permission.ResourcePermissionEntity;
 import com.codex.skilladmin.permission.ResourcePermissionRepository;
 import com.codex.skilladmin.security.AuthenticatedUser;
+import com.codex.skilladmin.user.UserDepartmentRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
@@ -23,6 +24,7 @@ public class ResourceService {
     private final SkillConfigRepository skillConfigRepository;
     private final McpConfigRepository mcpConfigRepository;
     private final ResourcePermissionRepository resourcePermissionRepository;
+    private final UserDepartmentRepository userDepartmentRepository;
     private final ObjectMapper objectMapper;
 
     public ResourceService(
@@ -30,12 +32,14 @@ public class ResourceService {
             SkillConfigRepository skillConfigRepository,
             McpConfigRepository mcpConfigRepository,
             ResourcePermissionRepository resourcePermissionRepository,
+            UserDepartmentRepository userDepartmentRepository,
             ObjectMapper objectMapper
     ) {
         this.resourceRepository = resourceRepository;
         this.skillConfigRepository = skillConfigRepository;
         this.mcpConfigRepository = mcpConfigRepository;
         this.resourcePermissionRepository = resourcePermissionRepository;
+        this.userDepartmentRepository = userDepartmentRepository;
         this.objectMapper = objectMapper;
     }
 
@@ -57,7 +61,7 @@ public class ResourceService {
 
     public ResourceDetailResponse getDetail(Long id, AuthenticatedUser user) {
         ResourceEntity resource = findResource(id);
-        if (!canManageResource(user, resource) && !canUseResource(user, resource.getCode())) {
+        if (!canManageResource(user, resource) && !canUseResource(user, resource)) {
             throw new BusinessException(403, "无权查看该资源");
         }
         return buildDetail(resource);
@@ -154,6 +158,7 @@ public class ResourceService {
         }
         return resourceRepository.findAllByIdInAndDeletedFalseOrderByIdDesc(resourceIds).stream()
                 .filter(resource -> resource.getEnabled() && resource.getStatus() == ResourceStatus.ACTIVE)
+                .filter(resource -> canUseResource(user, resource))
                 .map(this::toSummary)
                 .toList();
     }
@@ -177,17 +182,28 @@ public class ResourceService {
     public boolean canUseResource(AuthenticatedUser user, String code) {
         ResourceEntity resource = resourceRepository.findByCodeAndDeletedFalse(code)
                 .orElseThrow(() -> new BusinessException(404, "资源不存在"));
+        return canUseResource(user, resource);
+    }
+
+    public boolean canUseResource(AuthenticatedUser user, ResourceEntity resource) {
         if (!resource.getEnabled() || resource.getStatus() != ResourceStatus.ACTIVE) {
             return false;
         }
-        boolean isPublic = resourcePermissionRepository
-                .findAllByTargetScopeAndPermissionTypeAndEnabledTrueAndDeletedFalse(ScopeLevel.PUBLIC, PermissionType.USE)
-                .stream()
-                .anyMatch(permission -> permission.getResourceId().equals(resource.getId()));
-        if (isPublic) {
-            return true;
+        if (resource.getScopeLevel() == ScopeLevel.PUBLIC) {
+            return resourcePermissionRepository
+                    .findAllByTargetScopeAndPermissionTypeAndEnabledTrueAndDeletedFalse(ScopeLevel.PUBLIC, PermissionType.USE)
+                    .stream()
+                    .anyMatch(permission -> permission.getResourceId().equals(resource.getId()));
         }
-        boolean hasDepartment = !CollectionUtils.isEmpty(user.getDepartmentIds()) && resourcePermissionRepository
+        if (resource.getScopeLevel() == ScopeLevel.PERSONAL) {
+            return Objects.equals(resource.getOwnerUserId(), user.getId())
+                    && resourcePermissionRepository.existsByResourceIdAndTargetScopeAndUserIdAndPermissionTypeAndEnabledTrueAndDeletedFalse(
+                    resource.getId(), ScopeLevel.PERSONAL, user.getId(), PermissionType.USE);
+        }
+        if (!isDepartmentMember(user, resource.getOwnerDepartmentId())) {
+            return false;
+        }
+        boolean hasDepartment = resourcePermissionRepository
                 .findAllByTargetScopeAndDepartmentIdInAndPermissionTypeAndEnabledTrueAndDeletedFalse(
                         ScopeLevel.DEPARTMENT, user.getDepartmentIds(), PermissionType.USE)
                 .stream()
@@ -224,11 +240,11 @@ public class ResourceService {
         resource.setCode(request.code());
         resource.setDescription(request.description());
         resource.setScopeLevel(request.scopeLevel());
-        resource.setOwnerDepartmentId(request.ownerDepartmentId());
-        resource.setOwnerUserId(request.scopeLevel() == ScopeLevel.PERSONAL ? Optional.ofNullable(request.ownerUserId()).orElse(user.getId()) : request.ownerUserId());
+        resource.setOwnerDepartmentId(request.scopeLevel() == ScopeLevel.DEPARTMENT ? request.ownerDepartmentId() : null);
+        resource.setOwnerUserId(request.scopeLevel() == ScopeLevel.PERSONAL ? Optional.ofNullable(request.ownerUserId()).orElse(user.getId()) : null);
         resource.setStatus(request.status());
         resource.setEnabled(Optional.ofNullable(request.enabled()).orElse(true));
-        resource.setApprovalRequired(Optional.ofNullable(request.approvalRequired()).orElse(false));
+        resource.setApprovalRequired(request.scopeLevel() == ScopeLevel.DEPARTMENT && Optional.ofNullable(request.approvalRequired()).orElse(false));
         if (resource.getCreatedBy() == null) {
             resource.setCreatedBy(user.getId());
         }
@@ -253,6 +269,10 @@ public class ResourceService {
                 throw new BusinessException(403, "个人资源只能由本人或管理员维护");
             }
         }
+        if (request.scopeLevel() != ScopeLevel.DEPARTMENT && Boolean.TRUE.equals(request.approvalRequired())) {
+            throw new BusinessException("仅部门级资源支持申请审批模式");
+        }
+        validatePermissionAssignments(request, user);
         resourceRepository.findByCodeAndDeletedFalse(request.code()).ifPresent(existing -> {
             if (!Objects.equals(existing.getId(), id)) {
                 throw new BusinessException("资源编码已存在");
@@ -327,6 +347,10 @@ public class ResourceService {
 
     private void replacePermissions(ResourceEntity resource, List<PermissionAssignmentRequest> assignments, AuthenticatedUser user) {
         List<ResourcePermissionEntity> existing = resourcePermissionRepository.findAllByResourceIdAndDeletedFalse(resource.getId());
+        if (resource.getScopeLevel() == ScopeLevel.DEPARTMENT && Boolean.TRUE.equals(resource.getApprovalRequired())) {
+            syncApprovalRequiredPermissions(existing);
+            return;
+        }
         existing.forEach(permission -> {
             permission.setDeleted(true);
             permission.setEnabled(false);
@@ -352,6 +376,81 @@ public class ResourceService {
                 })
                 .toList();
         resourcePermissionRepository.saveAll(permissions);
+    }
+
+    private void syncApprovalRequiredPermissions(List<ResourcePermissionEntity> existing) {
+        List<ResourcePermissionEntity> changedPermissions = existing.stream()
+                .filter(permission -> permission.getTargetScope() != ScopeLevel.PERSONAL)
+                .peek(permission -> {
+                    permission.setDeleted(true);
+                    permission.setEnabled(false);
+                })
+                .toList();
+        if (!changedPermissions.isEmpty()) {
+            resourcePermissionRepository.saveAll(changedPermissions);
+        }
+    }
+
+    private void validatePermissionAssignments(ResourceUpsertRequest request, AuthenticatedUser user) {
+        if (request.scopeLevel() == ScopeLevel.DEPARTMENT && Boolean.TRUE.equals(request.approvalRequired())) {
+            if (!CollectionUtils.isEmpty(request.permissions())) {
+                throw new BusinessException("开启申请后，部门级资源不能预置任何可用权限");
+            }
+            return;
+        }
+        if (CollectionUtils.isEmpty(request.permissions())) {
+            return;
+        }
+        Long ownerDepartmentId = request.ownerDepartmentId();
+        Long ownerUserId = Optional.ofNullable(request.ownerUserId()).orElse(user.getId());
+        for (PermissionAssignmentRequest assignment : request.permissions()) {
+            validateAssignmentShape(assignment);
+            if (request.scopeLevel() == ScopeLevel.PUBLIC) {
+                if (assignment.targetScope() != ScopeLevel.PUBLIC) {
+                    throw new BusinessException("公共级资源只能授权给全员");
+                }
+                continue;
+            }
+            if (request.scopeLevel() == ScopeLevel.PERSONAL) {
+                if (assignment.targetScope() != ScopeLevel.PERSONAL || !Objects.equals(assignment.userId(), ownerUserId)) {
+                    throw new BusinessException("个人级资源只能授权给资源本人");
+                }
+                continue;
+            }
+            if (assignment.targetScope() == ScopeLevel.PUBLIC) {
+                throw new BusinessException("部门级资源不能授权为公共可用");
+            }
+            if (assignment.targetScope() == ScopeLevel.DEPARTMENT
+                    && !Objects.equals(assignment.departmentId(), ownerDepartmentId)) {
+                throw new BusinessException("部门级资源只能授权给所属部门");
+            }
+            if (assignment.targetScope() == ScopeLevel.PERSONAL
+                    && !userDepartmentRepository.existsByUserIdAndDepartmentIdAndDeletedFalse(assignment.userId(), ownerDepartmentId)) {
+                throw new BusinessException("部门级资源只能授权给本部门成员");
+            }
+        }
+    }
+
+    private void validateAssignmentShape(PermissionAssignmentRequest assignment) {
+        if (assignment.targetScope() == ScopeLevel.PUBLIC) {
+            if (assignment.departmentId() != null || assignment.userId() != null) {
+                throw new BusinessException("公共授权不能指定部门或个人");
+            }
+            return;
+        }
+        if (assignment.targetScope() == ScopeLevel.DEPARTMENT) {
+            if (assignment.departmentId() == null || assignment.userId() != null) {
+                throw new BusinessException("部门授权必须指定部门，且不能指定个人");
+            }
+            return;
+        }
+        if (assignment.userId() == null || assignment.departmentId() != null) {
+            throw new BusinessException("个人授权必须指定个人，且不能指定部门");
+        }
+    }
+
+    private boolean isDepartmentMember(AuthenticatedUser user, Long departmentId) {
+        return departmentId != null && !CollectionUtils.isEmpty(user.getDepartmentIds()) && user.getDepartmentIds().contains(departmentId);
     }
 
     private List<PermissionAssignmentRequest> buildDefaultAssignments(ResourceEntity resource, AuthenticatedUser user) {

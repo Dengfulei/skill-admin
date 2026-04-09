@@ -9,6 +9,8 @@ public interface UserDepartmentRepository extends JpaRepository<UserDepartmentEn
 
     List<UserDepartmentEntity> findAllByUserIdAndDeletedFalse(Long userId);
 
+    boolean existsByUserIdAndDepartmentIdAndDeletedFalse(Long userId, Long departmentId);
+
     boolean existsByUserIdAndDepartmentIdAndRoleCodeAndDeletedFalse(Long userId, Long departmentId, UserDepartmentRole roleCode);
 
     List<UserDepartmentEntity> findAllByDepartmentIdInAndDeletedFalse(Collection<Long> departmentIds);
