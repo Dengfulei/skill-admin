@@ -23,9 +23,10 @@ public class AdminResourceController {
             @CurrentUser AuthenticatedUser user,
             @RequestParam(defaultValue = "1") Integer pageNum,
             @RequestParam(defaultValue = "10") Integer pageSize,
-            @RequestParam(required = false) String keyword
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) ResourceType resourceType
     ) {
-        return ApiResponse.success(resourceService.listManageableResources(user, keyword, pageNum, pageSize));
+        return ApiResponse.success(resourceService.listManageableResources(user, keyword, resourceType, pageNum, pageSize));
     }
 
     @GetMapping("/{id}")

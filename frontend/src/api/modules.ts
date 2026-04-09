@@ -18,7 +18,7 @@ export const getCurrentUserApi = () => http.get<any, AuthenticatedUser>('/api/au
 
 export const getDepartmentsApi = () => http.get<any, Department[]>('/api/meta/departments')
 
-export const getAdminResourcesApi = (params: { pageNum: number; pageSize: number; keyword?: string }) =>
+export const getAdminResourcesApi = (params: { pageNum: number; pageSize: number; keyword?: string; resourceType?: 'SKILL' | 'MCP' }) =>
   http.get<any, ResourcePageResponse>('/api/admin/resources', { params })
 
 export const getAdminResourceDetailApi = (id: number) =>
@@ -36,7 +36,7 @@ export const toggleResourceEnabledApi = (id: number, enabled: boolean) =>
 export const deleteResourceApi = (id: number) =>
   http.delete<any, void>(`/api/admin/resources/${id}`)
 
-export const getAvailableResourcesApi = (params: { pageNum: number; pageSize: number }) =>
+export const getAvailableResourcesApi = (params: { pageNum: number; pageSize: number; keyword?: string; resourceType?: 'SKILL' | 'MCP' }) =>
   http.get<any, ResourcePageResponse>('/api/user/resources/available', { params })
 
 export const getApplyCatalogApi = (params: { pageNum: number; pageSize: number }) =>

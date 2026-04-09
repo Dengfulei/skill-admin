@@ -23,9 +23,11 @@ public class UserResourceController {
     public ApiResponse<ResourcePageResponse> available(
             @CurrentUser AuthenticatedUser user,
             @RequestParam(defaultValue = "1") Integer pageNum,
-            @RequestParam(defaultValue = "10") Integer pageSize
+            @RequestParam(defaultValue = "10") Integer pageSize,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) ResourceType resourceType
     ) {
-        return ApiResponse.success(resourceService.listAvailableResources(user, pageNum, pageSize));
+        return ApiResponse.success(resourceService.listAvailableResources(user, keyword, resourceType, pageNum, pageSize));
     }
 
     @GetMapping("/apply-catalog")

@@ -37,9 +37,27 @@
       </p>
     </div>
     <div class="page-card page-panel">
-      <div class="section-heading">
-        <h3>当前用户可用技能列表</h3>
-        <p>资源集合由公共授权、所属部门授权和个人授权三部分自动汇总得出。</p>
+      <div class="toolbar">
+        <div class="section-heading">
+          <h3>当前用户可用资源列表</h3>
+          <p>资源集合由公共授权、所属部门授权和个人授权三部分自动汇总得出。</p>
+        </div>
+        <div class="toolbar-main">
+          <el-radio-group v-model="resourceTypeFilter" @change="handleSearch">
+            <el-radio-button value="ALL">所有</el-radio-button>
+            <el-radio-button value="SKILL">Skill</el-radio-button>
+            <el-radio-button value="MCP">MCP</el-radio-button>
+          </el-radio-group>
+          <el-input
+            v-model="keyword"
+            placeholder="按名称或编码搜索"
+            class="search-input"
+            clearable
+            @clear="handleSearch"
+            @keyup.enter="handleSearch"
+          />
+          <el-button @click="handleSearch">搜索</el-button>
+        </div>
       </div>
       <div class="data-table">
         <el-table :data="resources" border>
@@ -83,10 +101,14 @@
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { getAvailableResourcesApi, runtimeInvokeApi } from '@/api/modules'
-import type { ResourceListStats, ResourceSummary } from '@/types'
+import type { ResourceListStats, ResourceSummary, ResourceType } from '@/types'
+
+type ResourceTypeFilter = 'ALL' | ResourceType
 
 const resources = ref<ResourceSummary[]>([])
 const testCode = ref('')
+const keyword = ref('')
+const resourceTypeFilter = ref<ResourceTypeFilter>('ALL')
 const pageNum = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
@@ -100,10 +122,36 @@ const stats = reactive<ResourceListStats>({
 })
 
 async function loadData() {
-  const page = await getAvailableResourcesApi({ pageNum: pageNum.value, pageSize: pageSize.value })
+  const page = await getAvailableResourcesApi({
+    pageNum: pageNum.value,
+    pageSize: pageSize.value,
+    keyword: keyword.value.trim() || undefined,
+    resourceType: getSelectedResourceType()
+  })
   resources.value = page.records
   total.value = page.total
   Object.assign(stats, page.stats)
+  await ensurePageInRange()
+}
+
+async function ensurePageInRange() {
+  if (total.value === 0 || resources.value.length > 0 || pageNum.value === 1) {
+    return
+  }
+  const lastPage = Math.max(1, Math.ceil(total.value / pageSize.value))
+  if (pageNum.value !== lastPage) {
+    pageNum.value = lastPage
+    await loadData()
+  }
+}
+
+function getSelectedResourceType() {
+  return resourceTypeFilter.value === 'ALL' ? undefined : resourceTypeFilter.value
+}
+
+function handleSearch() {
+  pageNum.value = 1
+  loadData()
 }
 
 async function invoke(code: string) {
@@ -156,6 +204,10 @@ onMounted(loadData)
   font-size: 13px;
 }
 
+.search-input {
+  width: 300px;
+}
+
 .table-pagination {
   display: flex;
   justify-content: flex-end;
@@ -163,6 +215,10 @@ onMounted(loadData)
 }
 
 @media (max-width: 720px) {
+  .search-input {
+    width: 100%;
+  }
+
   .table-pagination {
     justify-content: center;
   }

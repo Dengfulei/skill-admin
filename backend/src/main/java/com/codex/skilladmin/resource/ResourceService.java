@@ -39,10 +39,17 @@ public class ResourceService {
         this.objectMapper = objectMapper;
     }
 
-    public ResourcePageResponse listManageableResources(AuthenticatedUser user, String keyword, Integer pageNum, Integer pageSize) {
+    public ResourcePageResponse listManageableResources(
+            AuthenticatedUser user,
+            String keyword,
+            ResourceType resourceType,
+            Integer pageNum,
+            Integer pageSize
+    ) {
         List<ResourceSummaryResponse> resources = resourceRepository.findAllByDeletedFalseOrderByIdDesc().stream()
                 .filter(resource -> canManageResource(user, resource))
                 .map(this::toSummary)
+                .filter(resource -> matchesResourceType(resource, resourceType))
                 .filter(resource -> matchesKeyword(resource, keyword))
                 .toList();
         return buildResourcePage(resources, pageNum, pageSize);
@@ -102,8 +109,17 @@ public class ResourceService {
         resourceRepository.save(resource);
     }
 
-    public ResourcePageResponse listAvailableResources(AuthenticatedUser user, Integer pageNum, Integer pageSize) {
-        List<ResourceSummaryResponse> resources = findAvailableResources(user);
+    public ResourcePageResponse listAvailableResources(
+            AuthenticatedUser user,
+            String keyword,
+            ResourceType resourceType,
+            Integer pageNum,
+            Integer pageSize
+    ) {
+        List<ResourceSummaryResponse> resources = findAvailableResources(user).stream()
+                .filter(resource -> matchesResourceType(resource, resourceType))
+                .filter(resource -> matchesKeyword(resource, keyword))
+                .toList();
         return buildResourcePage(resources, pageNum, pageSize);
     }
 
@@ -432,6 +448,10 @@ public class ResourceService {
         }
         String normalizedKeyword = keyword.trim().toLowerCase(Locale.ROOT);
         return containsIgnoreCase(resource.name(), normalizedKeyword) || containsIgnoreCase(resource.code(), normalizedKeyword);
+    }
+
+    private boolean matchesResourceType(ResourceSummaryResponse resource, ResourceType resourceType) {
+        return resourceType == null || resource.resourceType() == resourceType;
     }
 
     private boolean containsIgnoreCase(String source, String keyword) {

@@ -22,6 +22,11 @@
           <p>集中维护资源定义、归属范围、启用状态和默认授权策略。</p>
         </div>
         <div class="toolbar-main">
+          <el-radio-group v-model="resourceTypeFilter" @change="handleSearch">
+            <el-radio-button value="ALL">所有</el-radio-button>
+            <el-radio-button value="SKILL">Skill</el-radio-button>
+            <el-radio-button value="MCP">MCP</el-radio-button>
+          </el-radio-group>
           <el-input
             v-model="keyword"
             placeholder="按名称或编码过滤"
@@ -105,11 +110,14 @@ import {
   toggleResourceEnabledApi,
   updateResourceApi
 } from '@/api/modules'
-import type { Department, ResourceDetail, ResourceListStats, ResourceSummary, ResourceUpsertRequest } from '@/types'
+import type { Department, ResourceDetail, ResourceListStats, ResourceSummary, ResourceType, ResourceUpsertRequest } from '@/types'
+
+type ResourceTypeFilter = 'ALL' | ResourceType
 
 const resources = ref<ResourceSummary[]>([])
 const departments = ref<Department[]>([])
 const keyword = ref('')
+const resourceTypeFilter = ref<ResourceTypeFilter>('ALL')
 const dialogVisible = ref(false)
 const currentDetail = ref<ResourceDetail | null>(null)
 const pageNum = ref(1)
@@ -129,7 +137,8 @@ async function loadData() {
     getAdminResourcesApi({
       pageNum: pageNum.value,
       pageSize: pageSize.value,
-      keyword: keyword.value.trim() || undefined
+      keyword: keyword.value.trim() || undefined,
+      resourceType: getSelectedResourceType()
     }),
     getDepartmentsApi()
   ])
@@ -149,6 +158,10 @@ async function ensurePageInRange() {
     pageNum.value = lastPage
     await loadData()
   }
+}
+
+function getSelectedResourceType() {
+  return resourceTypeFilter.value === 'ALL' ? undefined : resourceTypeFilter.value
 }
 
 function handleSearch() {
