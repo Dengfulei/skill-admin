@@ -118,6 +118,50 @@ curl -s -X POST http://localhost:8080/api/runtime/invoke \
 
 这证明项目中的“AI 调用工具自动校验权限”链路已经生效。
 
+## 有权限对照验证
+
+为确认同一资源在“有权限”情况下能够正常放行，继续使用 `sales_user / 123456` 账号进行验证。
+
+### 1. 登录 `sales_user`
+
+执行命令：
+
+```bash
+curl -s -X POST http://localhost:8080/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"sales_user","password":"123456"}'
+```
+
+### 2. 调用运行时鉴权接口
+
+执行命令：
+
+```bash
+curl -s -X POST http://localhost:8080/api/runtime/invoke \
+  -H "Authorization: Bearer <sales_user_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"resourceCode":"sales-analytics-mcp"}'
+```
+
+返回结果：
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "allowed": true,
+    "message": "鉴权通过，可执行 Skill/MCP 调用"
+  }
+}
+```
+
+说明：
+
+- `sales_user` 对 `sales-analytics-mcp` 已具备使用权限
+- 系统在运行时鉴权通过后允许调用
+- 同一资源在不同用户下能正确表现出“拒绝”与“放行”的差异
+
 ## 结论
 
 本次验证通过，系统满足以下要求：
@@ -125,7 +169,8 @@ curl -s -X POST http://localhost:8080/api/runtime/invoke \
 1. AI 调用工具前会自动执行权限校验
 2. 无权限时不会放行调用
 3. 无权限时会返回友好提示信息
-4. 运行时鉴权逻辑已在真实接口调用中得到验证
+4. 有权限时会正常放行调用
+5. 运行时鉴权逻辑已在真实接口调用中得到验证
 
 ## 相关实现位置
 
@@ -136,7 +181,6 @@ curl -s -X POST http://localhost:8080/api/runtime/invoke \
 
 ## 可补充的对照测试
 
-为使验证材料更完整，后续还可补充以下 2 组对照场景：
+为使验证材料更完整，后续还可补充以下场景：
 
-- 有权限用户调用资源，返回 `allowed = true`
 - 未登录直接调用接口，返回 `401` 与“未登录或登录已过期”
