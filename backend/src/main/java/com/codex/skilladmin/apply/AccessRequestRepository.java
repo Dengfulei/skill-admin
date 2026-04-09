@@ -7,6 +7,8 @@ import java.util.Optional;
 
 public interface AccessRequestRepository extends JpaRepository<AccessRequestEntity, Long> {
 
+    void deleteAllByResourceId(Long resourceId);
+
     List<AccessRequestEntity> findAllByApplicantUserIdAndDeletedFalseOrderByIdDesc(Long applicantUserId);
 
     List<AccessRequestEntity> findAllByDepartmentIdInAndDeletedFalseOrderByIdDesc(List<Long> departmentIds);

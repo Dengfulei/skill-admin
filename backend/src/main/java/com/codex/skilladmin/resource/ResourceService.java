@@ -2,6 +2,7 @@ package com.codex.skilladmin.resource;
 
 import com.codex.skilladmin.common.BusinessException;
 import com.codex.skilladmin.common.PageResponse;
+import com.codex.skilladmin.apply.AccessRequestRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.codex.skilladmin.permission.PermissionType;
@@ -21,6 +22,7 @@ import java.util.stream.Collectors;
 public class ResourceService {
 
     private final ResourceRepository resourceRepository;
+    private final AccessRequestRepository accessRequestRepository;
     private final SkillConfigRepository skillConfigRepository;
     private final McpConfigRepository mcpConfigRepository;
     private final ResourcePermissionRepository resourcePermissionRepository;
@@ -29,6 +31,7 @@ public class ResourceService {
 
     public ResourceService(
             ResourceRepository resourceRepository,
+            AccessRequestRepository accessRequestRepository,
             SkillConfigRepository skillConfigRepository,
             McpConfigRepository mcpConfigRepository,
             ResourcePermissionRepository resourcePermissionRepository,
@@ -36,6 +39,7 @@ public class ResourceService {
             ObjectMapper objectMapper
     ) {
         this.resourceRepository = resourceRepository;
+        this.accessRequestRepository = accessRequestRepository;
         this.skillConfigRepository = skillConfigRepository;
         this.mcpConfigRepository = mcpConfigRepository;
         this.resourcePermissionRepository = resourcePermissionRepository;
@@ -108,9 +112,11 @@ public class ResourceService {
         if (!canManageResource(user, resource)) {
             throw new BusinessException(403, "无权删除该资源");
         }
-        resource.setDeleted(true);
-        resource.setUpdatedBy(user.getId());
-        resourceRepository.save(resource);
+        accessRequestRepository.deleteAllByResourceId(resource.getId());
+        resourcePermissionRepository.deleteAllByResourceId(resource.getId());
+        skillConfigRepository.findById(resource.getId()).ifPresent(skillConfigRepository::delete);
+        mcpConfigRepository.findById(resource.getId()).ifPresent(mcpConfigRepository::delete);
+        resourceRepository.delete(resource);
     }
 
     public ResourcePageResponse listAvailableResources(

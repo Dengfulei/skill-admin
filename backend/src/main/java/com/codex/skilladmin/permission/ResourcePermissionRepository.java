@@ -8,6 +8,8 @@ import java.util.List;
 
 public interface ResourcePermissionRepository extends JpaRepository<ResourcePermissionEntity, Long> {
 
+    void deleteAllByResourceId(Long resourceId);
+
     List<ResourcePermissionEntity> findAllByResourceIdAndDeletedFalse(Long resourceId);
 
     List<ResourcePermissionEntity> findAllByTargetScopeAndPermissionTypeAndEnabledTrueAndDeletedFalse(
