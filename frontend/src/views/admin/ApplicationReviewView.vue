@@ -34,12 +34,15 @@
 import { onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getReviewApplicationsApi, reviewApplicationApi } from '@/api/modules'
+import { useApplicationStore } from '@/stores/application'
 import type { AccessRequestItem, AccessRequestStatus } from '@/types'
 
 const applications = ref<AccessRequestItem[]>([])
+const applicationStore = useApplicationStore()
 
 async function loadData() {
   applications.value = await getReviewApplicationsApi()
+  applicationStore.syncPendingReviewCount(applications.value)
 }
 
 function statusTag(status: AccessRequestStatus) {

@@ -20,7 +20,12 @@
           <span>共享资源管理</span>
         </el-menu-item>
         <el-menu-item v-if="authStore.canReviewApplications" index="/admin/applications">
-          <span>申请审批</span>
+          <div class="menu-item-content">
+            <span>申请审批</span>
+            <span v-if="applicationStore.hasPendingReviews" class="menu-item-count">
+              {{ applicationStore.pendingReviewCount }}
+            </span>
+          </div>
         </el-menu-item>
       </el-menu>
       <div class="aside-note">
@@ -62,13 +67,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
+import { useApplicationStore } from "@/stores/application";
 
 const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
+const applicationStore = useApplicationStore();
 
 const titleMap: Record<string, [string, string]> = {
   "/user/resources": [
@@ -91,9 +98,22 @@ const pageTitle = computed(() => titleMap[route.path]?.[0] ?? "Skill Admin");
 const subtitle = computed(() => titleMap[route.path]?.[1] ?? "");
 
 function handleLogout() {
+  applicationStore.resetPendingReviewCount();
   authStore.logout();
   router.push("/login");
 }
+
+watch(
+  () => authStore.canReviewApplications,
+  async (canReview) => {
+    if (!canReview) {
+      applicationStore.resetPendingReviewCount();
+      return;
+    }
+    await applicationStore.syncPendingReviewCount();
+  },
+  { immediate: true },
+);
 </script>
 
 <style scoped>
@@ -154,10 +174,39 @@ function handleLogout() {
   color: rgba(226, 232, 240, 0.84);
 }
 
+.menu-item-content {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.menu-item-count {
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(248, 113, 113, 0.18);
+  color: #fca5a5;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+
 .menu :deep(.el-menu-item:hover),
 .menu :deep(.el-menu-item.is-active) {
   color: #ffffff;
   background: rgba(255, 255, 255, 0.08);
+}
+
+.menu :deep(.el-menu-item:hover) .menu-item-count,
+.menu :deep(.el-menu-item.is-active) .menu-item-count {
+  background: rgba(248, 113, 113, 0.24);
+  color: #fecaca;
 }
 
 .aside-note {
