@@ -43,15 +43,24 @@ public class AccessRequestService {
     @Transactional
     public AccessRequestResponse submit(SubmitApplicationRequest request, AuthenticatedUser user) {
         ResourceEntity resource = resourceService.findResource(request.resourceId());
+        if (user.isSystemAdmin()) {
+            throw new BusinessException(403, "系统管理员不通过部门技能申请链路使用资源");
+        }
         if (resource.getScopeLevel() != ScopeLevel.DEPARTMENT) {
             throw new BusinessException("只有部门级资源支持申请");
         }
         if (!Boolean.TRUE.equals(resource.getApprovalRequired())) {
             throw new BusinessException("该资源无需申请，可由管理员直接分配");
         }
+        if (user.getDepartmentAdminIds().contains(resource.getOwnerDepartmentId())) {
+            throw new BusinessException(403, "部门管理员不通过部门技能申请链路使用本部门资源");
+        }
         if (resource.getOwnerDepartmentId() == null || CollectionUtils.isEmpty(user.getDepartmentIds())
                 || !user.getDepartmentIds().contains(resource.getOwnerDepartmentId())) {
             throw new BusinessException(403, "仅本部门成员可申请该资源");
+        }
+        if (!resource.getEnabled() || resource.getStatus() != com.codex.skilladmin.resource.ResourceStatus.ACTIVE) {
+            throw new BusinessException("当前资源未启用，暂不可申请");
         }
         if (resourceService.canUseResource(user, resource.getCode())) {
             throw new BusinessException("当前用户已拥有该资源权限");
@@ -79,14 +88,10 @@ public class AccessRequestService {
     }
 
     public List<AccessRequestResponse> listReviewable(AuthenticatedUser user) {
-        if (CollectionUtils.isEmpty(user.getDepartmentAdminIds()) && !user.isSystemAdmin()) {
+        if (CollectionUtils.isEmpty(user.getDepartmentAdminIds())) {
             return List.of();
         }
-        List<Long> departmentIds = user.isSystemAdmin() ? resourceRepository.findAll().stream()
-                .map(ResourceEntity::getOwnerDepartmentId)
-                .filter(java.util.Objects::nonNull)
-                .distinct()
-                .toList() : user.getDepartmentAdminIds().stream().toList();
+        List<Long> departmentIds = user.getDepartmentAdminIds().stream().toList();
 
         return accessRequestRepository.findAllByDepartmentIdInAndDeletedFalseOrderByIdDesc(departmentIds).stream()
                 .map(this::toResponse)
@@ -98,11 +103,18 @@ public class AccessRequestService {
         AccessRequestEntity entity = accessRequestRepository.findByIdAndDeletedFalse(id)
                 .orElseThrow(() -> new BusinessException(404, "申请记录不存在"));
         ResourceEntity resource = resourceService.findResource(entity.getResourceId());
-        if (!user.isSystemAdmin() && !user.getDepartmentAdminIds().contains(entity.getDepartmentId())) {
+        if (!user.getDepartmentAdminIds().contains(entity.getDepartmentId())) {
             throw new BusinessException(403, "无权审批该申请");
         }
         if (entity.getStatus() != AccessRequestStatus.PENDING) {
             throw new BusinessException("该申请已经处理过");
+        }
+        if (resource.getScopeLevel() != ScopeLevel.DEPARTMENT
+                || !Boolean.TRUE.equals(resource.getApprovalRequired())
+                || !resource.getEnabled()
+                || resource.getStatus() != com.codex.skilladmin.resource.ResourceStatus.ACTIVE
+                || !entity.getDepartmentId().equals(resource.getOwnerDepartmentId())) {
+            throw new BusinessException("当前资源状态已变化，无法继续审批该申请");
         }
         entity.setStatus(Boolean.TRUE.equals(request.approved()) ? AccessRequestStatus.APPROVED : AccessRequestStatus.REJECTED);
         entity.setReviewedBy(user.getId());

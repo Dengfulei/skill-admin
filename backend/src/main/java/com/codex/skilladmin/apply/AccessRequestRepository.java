@@ -9,6 +9,8 @@ public interface AccessRequestRepository extends JpaRepository<AccessRequestEnti
 
     void deleteAllByResourceId(Long resourceId);
 
+    List<AccessRequestEntity> findAllByResourceIdAndDeletedFalse(Long resourceId);
+
     List<AccessRequestEntity> findAllByApplicantUserIdAndDeletedFalseOrderByIdDesc(Long applicantUserId);
 
     List<AccessRequestEntity> findAllByDepartmentIdInAndDeletedFalseOrderByIdDesc(List<Long> departmentIds);

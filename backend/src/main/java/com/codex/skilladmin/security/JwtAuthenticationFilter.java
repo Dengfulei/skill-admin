@@ -1,5 +1,6 @@
 package com.codex.skilladmin.security;
 
+import com.codex.skilladmin.auth.AuthService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -20,9 +21,11 @@ import java.util.List;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
+    private final AuthService authService;
 
-    public JwtAuthenticationFilter(JwtTokenProvider jwtTokenProvider) {
+    public JwtAuthenticationFilter(JwtTokenProvider jwtTokenProvider, AuthService authService) {
         this.jwtTokenProvider = jwtTokenProvider;
+        this.authService = authService;
     }
 
     @Override
@@ -32,9 +35,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (StringUtils.hasText(authorization) && authorization.startsWith("Bearer ")) {
             String token = authorization.substring(7);
             try {
-                AuthenticatedUser user = jwtTokenProvider.parseToken(token);
+                AuthenticatedUser user = authService.currentUser(jwtTokenProvider.parseUserId(token));
                 List<SimpleGrantedAuthority> authorities = new ArrayList<>();
-                authorities.add(new SimpleGrantedAuthority(user.isSystemAdmin() ? "ROLE_ADMIN" : "ROLE_USER"));
+                boolean elevatedUser = user.isSystemAdmin() || !user.getDepartmentAdminIds().isEmpty();
+                authorities.add(new SimpleGrantedAuthority(elevatedUser ? "ROLE_ADMIN" : "ROLE_USER"));
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(user, null, authorities);
                 SecurityContextHolder.getContext().setAuthentication(authentication);

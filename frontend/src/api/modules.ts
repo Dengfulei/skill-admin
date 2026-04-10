@@ -24,6 +24,12 @@ export const getAdminResourcesApi = (params: { pageNum: number; pageSize: number
 export const getAdminResourceDetailApi = (id: number) =>
   http.get<any, ResourceDetail>(`/api/admin/resources/${id}`)
 
+export const getPersonalResourcesApi = (params: { pageNum: number; pageSize: number; keyword?: string; resourceType?: 'SKILL' | 'MCP' }) =>
+  http.get<any, ResourcePageResponse>('/api/user/resources/manageable-personal', { params })
+
+export const getPersonalResourceDetailApi = (id: number) =>
+  http.get<any, ResourceDetail>(`/api/user/resources/manageable-personal/${id}`)
+
 export const createResourceApi = (payload: ResourceUpsertRequest) =>
   http.post<any, ResourceDetail>('/api/admin/resources', payload)
 

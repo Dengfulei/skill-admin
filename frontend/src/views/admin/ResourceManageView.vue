@@ -92,6 +92,7 @@
       :current-user="authStore.user"
       :departments="departments"
       :detail="currentDetail"
+      :manage-mode="dialogManageMode"
       @close="dialogVisible = false"
       @submit="handleSubmit"
     />
@@ -99,7 +100,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRoute } from 'vue-router'
 import ResourceDialog from '@/components/ResourceDialog.vue'
@@ -109,6 +110,8 @@ import {
   getAdminResourceDetailApi,
   getAdminResourcesApi,
   getDepartmentsApi,
+  getPersonalResourceDetailApi,
+  getPersonalResourcesApi,
   toggleResourceEnabledApi,
   updateResourceApi
 } from '@/api/modules'
@@ -142,18 +145,20 @@ const panelTitle = computed(() => (isPersonalManageMode.value ? '我的个人资
 const panelDescription = computed(() =>
   isPersonalManageMode.value
     ? '创建和维护仅本人可用的个人 Skill / MCP 资源。'
-    : '集中维护资源定义、归属范围、启用状态和默认授权策略。'
+    : '集中维护公共级与部门级资源定义、共享归属范围、启用状态和默认授权策略。'
 )
+const dialogManageMode = computed(() => (isPersonalManageMode.value ? 'personal' : 'shared'))
 
 async function loadData() {
+  const params = {
+    pageNum: pageNum.value,
+    pageSize: pageSize.value,
+    keyword: keyword.value.trim() || undefined,
+    resourceType: getSelectedResourceType()
+  }
   const [resourcePage, departmentList] = await Promise.all([
-    getAdminResourcesApi({
-      pageNum: pageNum.value,
-      pageSize: pageSize.value,
-      keyword: keyword.value.trim() || undefined,
-      resourceType: getSelectedResourceType()
-    }),
-    getDepartmentsApi()
+    isPersonalManageMode.value ? getPersonalResourcesApi(params) : getAdminResourcesApi(params),
+    isPersonalManageMode.value ? Promise.resolve([] as Department[]) : getDepartmentsApi()
   ])
   resources.value = resourcePage.records
   total.value = resourcePage.total
@@ -199,7 +204,9 @@ function openCreate() {
 }
 
 async function openEdit(id: number) {
-  currentDetail.value = await getAdminResourceDetailApi(id)
+  currentDetail.value = isPersonalManageMode.value
+    ? await getPersonalResourceDetailApi(id)
+    : await getAdminResourceDetailApi(id)
   dialogVisible.value = true
 }
 
@@ -227,6 +234,16 @@ async function remove(id: number) {
   ElMessage.success('资源已删除')
   await loadData()
 }
+
+watch(
+  () => route.path,
+  () => {
+    pageNum.value = 1
+    keyword.value = ''
+    resourceTypeFilter.value = 'ALL'
+    loadData()
+  }
+)
 
 onMounted(loadData)
 </script>

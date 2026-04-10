@@ -2,7 +2,7 @@
   <div class="page-card page-panel">
     <div class="section-heading">
       <h3>待审批部门技能申请</h3>
-      <p>部门管理员仅能查看本部门申请，系统管理员可统览全部申请并完成最终授权。</p>
+      <p>部门管理员仅能查看并处理本人负责部门的申请记录。</p>
     </div>
     <div class="data-table">
       <el-table :data="applications" border>

@@ -72,6 +72,15 @@ public class JwtTokenProvider {
                 .build();
     }
 
+    public Long parseUserId(String token) {
+        Claims claims = Jwts.parser()
+                .verifyWith(secretKey)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+        return Long.valueOf(claims.getSubject());
+    }
+
     private Set<Long> toLongSet(Object value) {
         if (!(value instanceof Collection<?> collection)) {
             return Set.of();

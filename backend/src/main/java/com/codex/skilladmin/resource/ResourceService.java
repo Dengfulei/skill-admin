@@ -2,6 +2,7 @@ package com.codex.skilladmin.resource;
 
 import com.codex.skilladmin.common.BusinessException;
 import com.codex.skilladmin.common.PageResponse;
+import com.codex.skilladmin.apply.AccessRequestEntity;
 import com.codex.skilladmin.apply.AccessRequestRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -55,6 +56,24 @@ public class ResourceService {
             Integer pageSize
     ) {
         List<ResourceSummaryResponse> resources = resourceRepository.findAllByDeletedFalseOrderByIdDesc().stream()
+                .filter(resource -> resource.getScopeLevel() != ScopeLevel.PERSONAL)
+                .filter(resource -> canManageResource(user, resource))
+                .map(this::toSummary)
+                .filter(resource -> matchesResourceType(resource, resourceType))
+                .filter(resource -> matchesKeyword(resource, keyword))
+                .toList();
+        return buildResourcePage(resources, pageNum, pageSize);
+    }
+
+    public ResourcePageResponse listOwnPersonalResources(
+            AuthenticatedUser user,
+            String keyword,
+            ResourceType resourceType,
+            Integer pageNum,
+            Integer pageSize
+    ) {
+        List<ResourceSummaryResponse> resources = resourceRepository.findAllByOwnerUserIdAndDeletedFalse(user.getId()).stream()
+                .filter(resource -> resource.getScopeLevel() == ScopeLevel.PERSONAL)
                 .filter(resource -> canManageResource(user, resource))
                 .map(this::toSummary)
                 .filter(resource -> matchesResourceType(resource, resourceType))
@@ -65,8 +84,16 @@ public class ResourceService {
 
     public ResourceDetailResponse getDetail(Long id, AuthenticatedUser user) {
         ResourceEntity resource = findResource(id);
-        if (!canManageResource(user, resource) && !canUseResource(user, resource)) {
-            throw new BusinessException(403, "无权查看该资源");
+        if (!canManageResource(user, resource)) {
+            throw new BusinessException(403, "无权查看该资源详情");
+        }
+        return buildDetail(resource);
+    }
+
+    public ResourceDetailResponse getOwnPersonalDetail(Long id, AuthenticatedUser user) {
+        ResourceEntity resource = findResource(id);
+        if (resource.getScopeLevel() != ScopeLevel.PERSONAL || !Objects.equals(resource.getOwnerUserId(), user.getId())) {
+            throw new BusinessException(403, "无权查看该个人资源");
         }
         return buildDetail(resource);
     }
@@ -74,7 +101,7 @@ public class ResourceService {
     @Transactional
     public ResourceDetailResponse create(ResourceUpsertRequest request, AuthenticatedUser user) {
         ResourceEntity resource = new ResourceEntity();
-        fillResource(resource, request, user);
+        fillResource(resource, request, user, null);
         resource = resourceRepository.save(resource);
         saveDetailConfig(resource.getId(), request);
         replacePermissions(resource, request.permissions(), user);
@@ -87,7 +114,7 @@ public class ResourceService {
         if (!canManageResource(user, resource)) {
             throw new BusinessException(403, "无权修改该资源");
         }
-        fillResource(resource, request, user);
+        fillResource(resource, request, user, resource);
         resource = resourceRepository.save(resource);
         saveDetailConfig(resource.getId(), request);
         replacePermissions(resource, request.permissions(), user);
@@ -112,11 +139,22 @@ public class ResourceService {
         if (!canManageResource(user, resource)) {
             throw new BusinessException(403, "无权删除该资源");
         }
-        accessRequestRepository.deleteAllByResourceId(resource.getId());
-        resourcePermissionRepository.deleteAllByResourceId(resource.getId());
-        skillConfigRepository.findById(resource.getId()).ifPresent(skillConfigRepository::delete);
-        mcpConfigRepository.findById(resource.getId()).ifPresent(mcpConfigRepository::delete);
-        resourceRepository.delete(resource);
+        List<AccessRequestEntity> accessRequests = accessRequestRepository.findAllByResourceIdAndDeletedFalse(resource.getId());
+        accessRequests.forEach(item -> item.setDeleted(true));
+        accessRequestRepository.saveAll(accessRequests);
+
+        List<ResourcePermissionEntity> permissions = resourcePermissionRepository.findAllByResourceIdAndDeletedFalse(resource.getId());
+        permissions.forEach(item -> {
+            item.setDeleted(true);
+            item.setEnabled(false);
+        });
+        resourcePermissionRepository.saveAll(permissions);
+
+        resource.setDeleted(true);
+        resource.setEnabled(false);
+        resource.setStatus(ResourceStatus.DISABLED);
+        resource.setUpdatedBy(user.getId());
+        resourceRepository.save(resource);
     }
 
     public ResourcePageResponse listAvailableResources(
@@ -134,6 +172,9 @@ public class ResourceService {
     }
 
     public PageResponse<ResourceSummaryResponse> listDepartmentApplyCatalog(AuthenticatedUser user, Integer pageNum, Integer pageSize) {
+        if (user.isSystemAdmin() || !CollectionUtils.isEmpty(user.getDepartmentAdminIds())) {
+            return paginate(List.of(), pageNum, pageSize);
+        }
         List<ResourceSummaryResponse> resources = findDepartmentApplyCatalog(user);
         return paginate(resources, pageNum, pageSize);
     }
@@ -222,8 +263,8 @@ public class ResourceService {
     }
 
     public boolean canManageResource(AuthenticatedUser user, ResourceEntity resource) {
-        if (user.isSystemAdmin()) {
-            return true;
+        if (resource.getScopeLevel() == ScopeLevel.PUBLIC) {
+            return user.isSystemAdmin();
         }
         if (resource.getScopeLevel() == ScopeLevel.PERSONAL) {
             return Objects.equals(resource.getOwnerUserId(), user.getId());
@@ -239,8 +280,8 @@ public class ResourceService {
                 .orElseThrow(() -> new BusinessException(404, "资源不存在"));
     }
 
-    private void fillResource(ResourceEntity resource, ResourceUpsertRequest request, AuthenticatedUser user) {
-        validateCreateOrUpdateRequest(request, user, resource.getId());
+    private void fillResource(ResourceEntity resource, ResourceUpsertRequest request, AuthenticatedUser user, ResourceEntity existingResource) {
+        validateCreateOrUpdateRequest(request, user, existingResource);
         resource.setResourceType(request.resourceType());
         resource.setName(request.name());
         resource.setCode(request.code());
@@ -257,7 +298,7 @@ public class ResourceService {
         resource.setUpdatedBy(user.getId());
     }
 
-    private void validateCreateOrUpdateRequest(ResourceUpsertRequest request, AuthenticatedUser user, Long id) {
+    private void validateCreateOrUpdateRequest(ResourceUpsertRequest request, AuthenticatedUser user, ResourceEntity existingResource) {
         if (request.scopeLevel() == ScopeLevel.PUBLIC && !user.isSystemAdmin()) {
             throw new BusinessException(403, "只有系统管理员可以维护公共资源");
         }
@@ -265,25 +306,45 @@ public class ResourceService {
             if (request.ownerDepartmentId() == null) {
                 throw new BusinessException("部门级资源必须绑定所属部门");
             }
-            if (!user.isSystemAdmin() && !user.getDepartmentAdminIds().contains(request.ownerDepartmentId())) {
+            if (!user.getDepartmentAdminIds().contains(request.ownerDepartmentId())) {
                 throw new BusinessException(403, "只有部门管理员可以维护本部门资源");
             }
         }
         if (request.scopeLevel() == ScopeLevel.PERSONAL) {
             Long ownerUserId = Optional.ofNullable(request.ownerUserId()).orElse(user.getId());
-            if (!ownerUserId.equals(user.getId()) && !user.isSystemAdmin()) {
-                throw new BusinessException(403, "个人资源只能由本人或管理员维护");
+            if (!ownerUserId.equals(user.getId())) {
+                throw new BusinessException(403, "个人资源只能由本人维护");
             }
         }
         if (request.scopeLevel() != ScopeLevel.DEPARTMENT && Boolean.TRUE.equals(request.approvalRequired())) {
             throw new BusinessException("仅部门级资源支持申请审批模式");
         }
+        validateImmutableOwnership(request, existingResource, user);
         validatePermissionAssignments(request, user);
         resourceRepository.findByCodeAndDeletedFalse(request.code()).ifPresent(existing -> {
-            if (!Objects.equals(existing.getId(), id)) {
+            if (existingResource == null || !Objects.equals(existing.getId(), existingResource.getId())) {
                 throw new BusinessException("资源编码已存在");
             }
         });
+    }
+
+    private void validateImmutableOwnership(ResourceUpsertRequest request, ResourceEntity existingResource, AuthenticatedUser user) {
+        if (existingResource == null) {
+            return;
+        }
+        if (existingResource.getScopeLevel() != request.scopeLevel()) {
+            throw new BusinessException("资源创建后不允许修改权限级别");
+        }
+        if (existingResource.getScopeLevel() == ScopeLevel.DEPARTMENT
+                && !Objects.equals(existingResource.getOwnerDepartmentId(), request.ownerDepartmentId())) {
+            throw new BusinessException("部门级资源创建后不允许修改所属部门");
+        }
+        if (existingResource.getScopeLevel() == ScopeLevel.PERSONAL) {
+            Long ownerUserId = Optional.ofNullable(request.ownerUserId()).orElse(user.getId());
+            if (!Objects.equals(existingResource.getOwnerUserId(), ownerUserId)) {
+                throw new BusinessException("个人级资源创建后不允许修改所属用户");
+            }
+        }
     }
 
     private void saveDetailConfig(Long resourceId, ResourceUpsertRequest request) {

@@ -10,16 +10,16 @@
         <el-menu-item index="/user/resources">
           <span>我的可用技能</span>
         </el-menu-item>
-        <el-menu-item index="/user/applications">
+        <el-menu-item v-if="authStore.canApplyDepartmentResources" index="/user/applications">
           <span>部门技能申请</span>
         </el-menu-item>
-        <el-menu-item v-if="authStore.isManager" index="/admin/resources">
-          <span>资源管理</span>
-        </el-menu-item>
-        <el-menu-item v-else index="/user/manage-resources">
+        <el-menu-item index="/user/manage-resources">
           <span>个人资源管理</span>
         </el-menu-item>
-        <el-menu-item v-if="authStore.isManager" index="/admin/applications">
+        <el-menu-item v-if="authStore.canManageSharedResources" index="/admin/resources">
+          <span>共享资源管理</span>
+        </el-menu-item>
+        <el-menu-item v-if="authStore.canReviewApplications" index="/admin/applications">
           <span>申请审批</span>
         </el-menu-item>
       </el-menu>
@@ -81,10 +81,10 @@ const titleMap: Record<string, [string, string]> = {
     "仅维护当前用户的个人 Skill/MCP 资源，并保持仅本人可用",
   ],
   "/admin/resources": [
-    "资源管理",
-    "维护 Skill/MCP 资源、按三级权限分配与启停控制",
+    "共享资源管理",
+    "维护公共级与部门级 Skill / MCP 资源，并执行共享授权与启停控制",
   ],
-  "/admin/applications": ["申请审批", "部门管理员或系统管理员处理部门技能申请"],
+  "/admin/applications": ["申请审批", "部门管理员处理本人负责部门的技能申请"],
 };
 
 const pageTitle = computed(() => titleMap[route.path]?.[0] ?? "Skill Admin");

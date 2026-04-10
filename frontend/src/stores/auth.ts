@@ -8,9 +8,13 @@ export const useAuthStore = defineStore('auth', () => {
   const user = ref<AuthenticatedUser | null>(null)
 
   const isLoggedIn = computed(() => Boolean(token.value))
-  const isManager = computed(() =>
-    Boolean(user.value?.systemAdmin || (user.value?.departmentAdminIds?.length ?? 0) > 0)
+  const isSystemAdmin = computed(() => Boolean(user.value?.systemAdmin))
+  const hasDepartmentAdminRole = computed(() => Boolean((user.value?.departmentAdminIds?.length ?? 0) > 0))
+  const canApplyDepartmentResources = computed(() =>
+    Boolean((user.value?.departmentIds?.length ?? 0) > 0 && !isSystemAdmin.value && !hasDepartmentAdminRole.value)
   )
+  const canManageSharedResources = computed(() => Boolean(isSystemAdmin.value || hasDepartmentAdminRole.value))
+  const canReviewApplications = computed(() => Boolean(hasDepartmentAdminRole.value))
 
   async function login(username: string, password: string) {
     const data = await loginApi({ username, password })
@@ -34,7 +38,11 @@ export const useAuthStore = defineStore('auth', () => {
     token,
     user,
     isLoggedIn,
-    isManager,
+    isSystemAdmin,
+    hasDepartmentAdminRole,
+    canApplyDepartmentResources,
+    canManageSharedResources,
+    canReviewApplications,
     login,
     fetchCurrentUser,
     logout

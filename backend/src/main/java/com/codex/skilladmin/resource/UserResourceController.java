@@ -5,6 +5,7 @@ import com.codex.skilladmin.common.PageResponse;
 import com.codex.skilladmin.security.AuthenticatedUser;
 import com.codex.skilladmin.security.CurrentUser;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -37,5 +38,24 @@ public class UserResourceController {
             @RequestParam(defaultValue = "10") Integer pageSize
     ) {
         return ApiResponse.success(resourceService.listDepartmentApplyCatalog(user, pageNum, pageSize));
+    }
+
+    @GetMapping("/manageable-personal")
+    public ApiResponse<ResourcePageResponse> manageablePersonal(
+            @CurrentUser AuthenticatedUser user,
+            @RequestParam(defaultValue = "1") Integer pageNum,
+            @RequestParam(defaultValue = "10") Integer pageSize,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) ResourceType resourceType
+    ) {
+        return ApiResponse.success(resourceService.listOwnPersonalResources(user, keyword, resourceType, pageNum, pageSize));
+    }
+
+    @GetMapping("/manageable-personal/{id}")
+    public ApiResponse<ResourceDetailResponse> manageablePersonalDetail(
+            @PathVariable Long id,
+            @CurrentUser AuthenticatedUser user
+    ) {
+        return ApiResponse.success(resourceService.getOwnPersonalDetail(id, user));
     }
 }

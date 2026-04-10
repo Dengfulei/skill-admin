@@ -78,14 +78,7 @@
               部门级资源需指定归属部门。
             </div>
           </el-form-item>
-          <el-form-item label="所属用户" v-if="model.scopeLevel === 'PERSONAL' && isSystemAdmin">
-            <el-input-number v-model="model.ownerUserId" :min="1" />
-            <div class="field-tip">
-              <span class="field-tag">选填</span>
-              个人级资源可指定归属用户，不填默认当前用户。
-            </div>
-          </el-form-item>
-          <el-form-item label="所属用户" v-else-if="model.scopeLevel === 'PERSONAL'">
+          <el-form-item label="所属用户" v-if="model.scopeLevel === 'PERSONAL'">
             <el-input :model-value="personalOwnerLabel" disabled />
             <div class="field-tip">
               <span class="field-tag">固定</span>
@@ -295,6 +288,7 @@ const props = defineProps<{
   currentUser: AuthenticatedUser | null
   departments: Department[]
   detail?: ResourceDetail | null
+  manageMode: 'shared' | 'personal'
 }>()
 
 const emit = defineEmits<{
@@ -318,20 +312,17 @@ const model = reactive<ResourceDialogModel>({
 const isSystemAdmin = computed(() => Boolean(props.currentUser?.systemAdmin))
 const isDepartmentAdmin = computed(() => Boolean(props.currentUser?.departmentAdminIds?.length))
 const availableScopeOptions = computed(() => {
+  if (props.manageMode === 'personal') {
+    return [{ label: '个人级', value: 'PERSONAL' as ScopeLevel }]
+  }
+  const options: Array<{ label: string; value: ScopeLevel }> = []
   if (isSystemAdmin.value) {
-    return [
-      { label: '公共级', value: 'PUBLIC' as ScopeLevel },
-      { label: '部门级', value: 'DEPARTMENT' as ScopeLevel },
-      { label: '个人级', value: 'PERSONAL' as ScopeLevel }
-    ]
+    options.push({ label: '公共级', value: 'PUBLIC' })
   }
   if (isDepartmentAdmin.value) {
-    return [
-      { label: '部门级', value: 'DEPARTMENT' as ScopeLevel },
-      { label: '个人级', value: 'PERSONAL' as ScopeLevel }
-    ]
+    options.push({ label: '部门级', value: 'DEPARTMENT' })
   }
-  return [{ label: '个人级', value: 'PERSONAL' as ScopeLevel }]
+  return options
 })
 const selectableDepartments = computed(() => {
   if (isSystemAdmin.value) {
@@ -390,13 +381,7 @@ function normalizeModel() {
     model.ownerUserId = undefined
     return
   }
-  if (!isSystemAdmin.value) {
-    model.ownerUserId = props.currentUser?.id
-    return
-  }
-  if (!model.ownerUserId) {
-    model.ownerUserId = props.currentUser?.id
-  }
+  model.ownerUserId = props.currentUser?.id
 }
 
 watch(
@@ -467,7 +452,7 @@ watch(
 )
 
 watch(
-  () => [props.currentUser, props.departments],
+  () => [props.currentUser, props.departments, props.manageMode],
   () => {
     normalizeModel()
   }

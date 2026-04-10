@@ -60,10 +60,16 @@ router.beforeEach(async (to) => {
   if (!authStore.user) {
     await authStore.fetchCurrentUser()
   }
-  if (to.path === '/admin/resources' && !authStore.isManager) {
+  if (to.path === '/user/applications' && !authStore.canApplyDepartmentResources) {
+    return authStore.canManageSharedResources ? '/admin/resources' : '/user/resources'
+  }
+  if (to.path === '/admin/resources' && !authStore.canManageSharedResources) {
     return '/user/manage-resources'
   }
-  if (to.path.startsWith('/admin') && !authStore.isManager) {
+  if (to.path === '/admin/applications' && !authStore.canReviewApplications) {
+    return authStore.canManageSharedResources ? '/admin/resources' : '/user/resources'
+  }
+  if (to.path.startsWith('/admin') && !authStore.canManageSharedResources) {
     return '/user/resources'
   }
   return true
