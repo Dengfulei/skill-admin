@@ -87,6 +87,7 @@ npm run dev
 - [数据库设计文档](/Users/dengfulei/Desktop/codex-ai/skill-admin/docs/数据库设计文档.md)
 - [接口与权限说明](/Users/dengfulei/Desktop/codex-ai/skill-admin/docs/接口与权限说明.md)
 - [运行时权限验证测试记录](/Users/dengfulei/Desktop/codex-ai/skill-admin/docs/运行时权限验证测试记录.md)
+- [前后端全流程验证测试记录](/Users/dengfulei/Desktop/codex-ai/skill-admin/docs/前后端全流程验证测试记录.md)
 - [演示脚本](/Users/dengfulei/Desktop/codex-ai/skill-admin/docs/演示脚本.md)
 - [智能辅助编程说明](/Users/dengfulei/Desktop/codex-ai/skill-admin/docs/智能辅助编程说明.md)
 - [智能辅助编程过程记录台账](/Users/dengfulei/Desktop/codex-ai/skill-admin/docs/智能辅助编程过程记录台账.md)
