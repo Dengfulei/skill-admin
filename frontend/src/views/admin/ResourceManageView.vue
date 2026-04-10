@@ -229,7 +229,7 @@ async function toggleEnabled(row: ResourceSummary) {
 }
 
 async function remove(id: number) {
-  await ElMessageBox.confirm('删除后资源不会再出现在当前列表，确认继续吗？', '删除确认')
+  await ElMessageBox.confirm('删除后会永久移除资源及其关联权限、申请和配置数据，确认继续吗？', '永久删除确认')
   await deleteResourceApi(id)
   ElMessage.success('资源已删除')
   await loadData()

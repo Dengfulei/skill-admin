@@ -2,6 +2,7 @@ package com.codex.skilladmin.resource;
 
 import com.codex.skilladmin.apply.AccessRequestRepository;
 import com.codex.skilladmin.common.BusinessException;
+import com.codex.skilladmin.permission.ResourcePermissionEntity;
 import com.codex.skilladmin.permission.ResourcePermissionRepository;
 import com.codex.skilladmin.security.AuthenticatedUser;
 import com.codex.skilladmin.user.UserDepartmentRepository;
@@ -18,6 +19,7 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -140,6 +142,61 @@ class ResourceServiceTest {
 
         BusinessException exception = assertThrows(BusinessException.class, () -> resourceService.update(1L, request, user));
         assertEquals("资源创建后不允许修改权限级别", exception.getMessage());
+    }
+
+    @Test
+    void delete_physicallyRemovesResourceAndRelatedData() {
+        AuthenticatedUser user = AuthenticatedUser.builder()
+                .id(10L)
+                .username("tech_admin")
+                .displayName("Tech Admin")
+                .systemAdmin(false)
+                .departmentIds(Set.of(2L))
+                .departmentAdminIds(Set.of(2L))
+                .build();
+
+        ResourceEntity existing = resource(1L, ScopeLevel.DEPARTMENT, 2L, null);
+        existing.setResourceType(ResourceType.SKILL);
+
+        SkillConfigEntity skillConfig = new SkillConfigEntity();
+        skillConfig.setResourceId(1L);
+
+        when(resourceRepository.findByIdAndDeletedFalse(1L)).thenReturn(Optional.of(existing));
+        when(skillConfigRepository.findById(1L)).thenReturn(Optional.of(skillConfig));
+        when(mcpConfigRepository.findById(1L)).thenReturn(Optional.empty());
+
+        resourceService.delete(1L, user);
+
+        verify(accessRequestRepository).deleteAllByResourceId(1L);
+        verify(resourcePermissionRepository).deleteAllByResourceId(1L);
+        verify(skillConfigRepository).delete(skillConfig);
+        verify(resourceRepository).delete(existing);
+    }
+
+    @Test
+    void update_replacesPermissionsWithPhysicalDelete() {
+        AuthenticatedUser user = AuthenticatedUser.builder()
+                .id(10L)
+                .username("tech_admin")
+                .displayName("Tech Admin")
+                .systemAdmin(false)
+                .departmentIds(Set.of(2L))
+                .departmentAdminIds(Set.of(2L))
+                .build();
+
+        ResourceEntity existing = resource(1L, ScopeLevel.DEPARTMENT, 2L, null);
+        ResourcePermissionEntity permission = new ResourcePermissionEntity();
+        permission.setId(100L);
+        permission.setResourceId(1L);
+        permission.setTargetScope(ScopeLevel.DEPARTMENT);
+
+        when(resourceRepository.findByIdAndDeletedFalse(1L)).thenReturn(Optional.of(existing));
+        when(resourcePermissionRepository.findAllByResourceIdAndDeletedFalse(1L)).thenReturn(List.of(permission));
+        when(resourceRepository.save(existing)).thenReturn(existing);
+
+        resourceService.update(1L, request(ScopeLevel.DEPARTMENT, 2L, null), user);
+
+        verify(resourcePermissionRepository).deleteAll(List.of(permission));
     }
 
     private ResourceEntity resource(Long id, ScopeLevel scopeLevel, Long departmentId, Long ownerUserId) {

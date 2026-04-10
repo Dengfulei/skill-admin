@@ -139,22 +139,11 @@ public class ResourceService {
         if (!canManageResource(user, resource)) {
             throw new BusinessException(403, "无权删除该资源");
         }
-        List<AccessRequestEntity> accessRequests = accessRequestRepository.findAllByResourceIdAndDeletedFalse(resource.getId());
-        accessRequests.forEach(item -> item.setDeleted(true));
-        accessRequestRepository.saveAll(accessRequests);
-
-        List<ResourcePermissionEntity> permissions = resourcePermissionRepository.findAllByResourceIdAndDeletedFalse(resource.getId());
-        permissions.forEach(item -> {
-            item.setDeleted(true);
-            item.setEnabled(false);
-        });
-        resourcePermissionRepository.saveAll(permissions);
-
-        resource.setDeleted(true);
-        resource.setEnabled(false);
-        resource.setStatus(ResourceStatus.DISABLED);
-        resource.setUpdatedBy(user.getId());
-        resourceRepository.save(resource);
+        accessRequestRepository.deleteAllByResourceId(resource.getId());
+        resourcePermissionRepository.deleteAllByResourceId(resource.getId());
+        skillConfigRepository.findById(resource.getId()).ifPresent(skillConfigRepository::delete);
+        mcpConfigRepository.findById(resource.getId()).ifPresent(mcpConfigRepository::delete);
+        resourceRepository.delete(resource);
     }
 
     public ResourcePageResponse listAvailableResources(
@@ -418,11 +407,9 @@ public class ResourceService {
             syncApprovalRequiredPermissions(existing);
             return;
         }
-        existing.forEach(permission -> {
-            permission.setDeleted(true);
-            permission.setEnabled(false);
-        });
-        resourcePermissionRepository.saveAll(existing);
+        if (!existing.isEmpty()) {
+            resourcePermissionRepository.deleteAll(existing);
+        }
 
         List<PermissionAssignmentRequest> finalAssignments = assignments;
         if (CollectionUtils.isEmpty(assignments)) {
@@ -448,13 +435,9 @@ public class ResourceService {
     private void syncApprovalRequiredPermissions(List<ResourcePermissionEntity> existing) {
         List<ResourcePermissionEntity> changedPermissions = existing.stream()
                 .filter(permission -> permission.getTargetScope() != ScopeLevel.PERSONAL)
-                .peek(permission -> {
-                    permission.setDeleted(true);
-                    permission.setEnabled(false);
-                })
                 .toList();
         if (!changedPermissions.isEmpty()) {
-            resourcePermissionRepository.saveAll(changedPermissions);
+            resourcePermissionRepository.deleteAll(changedPermissions);
         }
     }
 
