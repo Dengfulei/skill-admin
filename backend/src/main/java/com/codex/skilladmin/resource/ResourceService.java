@@ -135,15 +135,15 @@ public class ResourceService {
 
     @Transactional
     public void delete(Long id, AuthenticatedUser user) {
-        ResourceEntity resource = findResource(id);
+        ResourceEntity resource = findResourceForDelete(id);
         if (!canManageResource(user, resource)) {
             throw new BusinessException(403, "无权删除该资源");
         }
-        accessRequestRepository.deleteAllByResourceId(resource.getId());
-        resourcePermissionRepository.deleteAllByResourceId(resource.getId());
-        skillConfigRepository.findById(resource.getId()).ifPresent(skillConfigRepository::delete);
-        mcpConfigRepository.findById(resource.getId()).ifPresent(mcpConfigRepository::delete);
-        resourceRepository.delete(resource);
+        accessRequestRepository.hardDeleteAllByResourceId(resource.getId());
+        resourcePermissionRepository.hardDeleteAllByResourceId(resource.getId());
+        skillConfigRepository.hardDeleteByResourceId(resource.getId());
+        mcpConfigRepository.hardDeleteByResourceId(resource.getId());
+        resourceRepository.hardDeleteById(resource.getId());
     }
 
     public ResourcePageResponse listAvailableResources(
@@ -266,6 +266,11 @@ public class ResourceService {
 
     public ResourceEntity findResource(Long id) {
         return resourceRepository.findByIdAndDeletedFalse(id)
+                .orElseThrow(() -> new BusinessException(404, "资源不存在"));
+    }
+
+    private ResourceEntity findResourceForDelete(Long id) {
+        return resourceRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(404, "资源不存在"));
     }
 

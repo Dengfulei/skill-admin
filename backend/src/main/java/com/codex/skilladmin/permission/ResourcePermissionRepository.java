@@ -2,6 +2,8 @@ package com.codex.skilladmin.permission;
 
 import com.codex.skilladmin.resource.ScopeLevel;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
 
 import java.util.Collection;
 import java.util.List;
@@ -23,4 +25,8 @@ public interface ResourcePermissionRepository extends JpaRepository<ResourcePerm
 
     boolean existsByResourceIdAndTargetScopeAndUserIdAndPermissionTypeAndEnabledTrueAndDeletedFalse(
             Long resourceId, ScopeLevel targetScope, Long userId, PermissionType permissionType);
+
+    @Modifying
+    @Query(value = "DELETE FROM resource_permission WHERE resource_id = ?1", nativeQuery = true)
+    void hardDeleteAllByResourceId(Long resourceId);
 }

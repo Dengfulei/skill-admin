@@ -27,14 +27,38 @@
           <h2>进入控制台</h2>
           <p>请使用演示账号登录，查看不同角色下的可见资源与管理边界。</p>
         </div>
-        <el-form :model="form" label-position="top" @submit.prevent="handleLogin">
+        <el-form
+          :model="form"
+          label-position="top"
+          data-testid="login-form"
+          @submit.prevent="handleLogin"
+        >
           <el-form-item label="用户名">
-            <el-input v-model="form.username" placeholder="admin / sales_admin / tech_admin / dengfulei / alice" />
+            <el-input
+              v-model="form.username"
+              placeholder="admin / sales_admin / tech_admin / dengfulei / alice"
+              name="username"
+              aria-label="登录用户名"
+              data-testid="login-username"
+            />
           </el-form-item>
           <el-form-item label="密码">
-            <el-input v-model="form.password" show-password placeholder="默认 123456" />
+            <el-input
+              v-model="form.password"
+              show-password
+              placeholder="默认 123456"
+              name="password"
+              aria-label="登录密码"
+              data-testid="login-password"
+            />
           </el-form-item>
-          <el-button type="primary" size="large" class="submit-btn" @click="handleLogin">
+          <el-button
+            type="primary"
+            size="large"
+            class="submit-btn"
+            data-testid="login-submit"
+            @click="handleLogin"
+          >
             登录系统
           </el-button>
         </el-form>

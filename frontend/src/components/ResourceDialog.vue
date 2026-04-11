@@ -4,6 +4,7 @@
     :model-value="visible"
     :title="dialogTitle"
     width="min(980px, calc(100vw - 24px))"
+    data-testid="resource-dialog"
     @close="emit('close')"
   >
     <div class="dialog-stage">
@@ -36,7 +37,11 @@
 
           <div class="form-grid form-grid-two">
             <el-form-item label="资源类型" required>
-              <el-select v-model="model.resourceType" placeholder="请选择资源类型">
+              <el-select
+                v-model="model.resourceType"
+                placeholder="请选择资源类型"
+                data-testid="resource-type"
+              >
                 <el-option label="Skill" value="SKILL" />
                 <el-option label="MCP" value="MCP" />
               </el-select>
@@ -44,7 +49,11 @@
             </el-form-item>
 
             <el-form-item label="权限级别" required>
-              <el-select v-model="model.scopeLevel" placeholder="请选择权限级别">
+              <el-select
+                v-model="model.scopeLevel"
+                placeholder="请选择权限级别"
+                data-testid="resource-scope-level"
+              >
                 <el-option
                   v-for="item in availableScopeOptions"
                   :key="item.value"
@@ -56,18 +65,35 @@
             </el-form-item>
 
             <el-form-item label="名称" required>
-              <el-input v-model="model.name" placeholder="例如：部门知识检索 Skill" />
+              <el-input
+                v-model="model.name"
+                placeholder="例如：部门知识检索 Skill"
+                name="resourceName"
+                aria-label="资源名称"
+                data-testid="resource-name"
+              />
             </el-form-item>
 
             <el-form-item label="编码" required>
-              <el-input v-model="model.code" placeholder="例如：dept-knowledge-search" />
+              <el-input
+                v-model="model.code"
+                placeholder="例如：dept-knowledge-search"
+                name="resourceCode"
+                aria-label="资源编码"
+                data-testid="resource-code"
+              />
               <div class="field-hint">建议使用英文小写和中划线。</div>
             </el-form-item>
           </div>
 
           <div class="form-grid form-grid-two">
             <el-form-item v-if="model.scopeLevel === 'DEPARTMENT'" label="所属部门" required>
-              <el-select v-model="model.ownerDepartmentId" clearable placeholder="请选择归属部门">
+              <el-select
+                v-model="model.ownerDepartmentId"
+                clearable
+                placeholder="请选择归属部门"
+                data-testid="resource-owner-department"
+              >
                 <el-option
                   v-for="item in selectableDepartments"
                   :key="item.id"
@@ -79,12 +105,22 @@
             </el-form-item>
 
             <el-form-item v-if="model.scopeLevel === 'PERSONAL'" label="所属用户">
-              <el-input :model-value="personalOwnerLabel" disabled />
+              <el-input
+                :model-value="personalOwnerLabel"
+                disabled
+                name="resourceOwnerUser"
+                aria-label="所属用户"
+                data-testid="resource-owner-user"
+              />
               <div class="field-hint">个人级资源默认仅本人可用。</div>
             </el-form-item>
 
             <el-form-item label="发布状态" required>
-              <el-select v-model="model.status" placeholder="请选择状态">
+              <el-select
+                v-model="model.status"
+                placeholder="请选择状态"
+                data-testid="resource-status"
+              >
                 <el-option label="草稿" value="DRAFT" />
                 <el-option label="启用" value="ACTIVE" />
                 <el-option label="禁用" value="DISABLED" />
@@ -98,6 +134,9 @@
               type="textarea"
               :rows="3"
               placeholder="一句话说明这个资源的用途。"
+              name="resourceDescription"
+              aria-label="资源描述"
+              data-testid="resource-description"
             />
           </el-form-item>
 
@@ -107,7 +146,11 @@
                 <strong>启用资源</strong>
                 <p>关闭后暂不参与正常使用。</p>
               </div>
-              <el-switch v-model="model.enabled" />
+              <el-switch
+                v-model="model.enabled"
+                aria-label="启用资源"
+                data-testid="resource-enabled"
+              />
             </div>
 
             <div class="toggle-line" :class="{ 'is-muted': model.scopeLevel !== 'DEPARTMENT' }">
@@ -115,7 +158,12 @@
                 <strong>需要申请</strong>
                 <p>仅部门级支持，开启后按审批发放。</p>
               </div>
-              <el-switch v-model="model.approvalRequired" :disabled="model.scopeLevel !== 'DEPARTMENT'" />
+              <el-switch
+                v-model="model.approvalRequired"
+                :disabled="model.scopeLevel !== 'DEPARTMENT'"
+                aria-label="需要申请"
+                data-testid="resource-approval-required"
+              />
             </div>
           </div>
         </section>
@@ -133,15 +181,33 @@
             <div v-if="model.resourceType === 'SKILL'" key="skill" class="section-body">
               <div class="form-grid form-grid-three">
                 <el-form-item label="版本">
-                  <el-input v-model="model.version" placeholder="例如：1.2.0" />
+                  <el-input
+                    v-model="model.version"
+                    placeholder="例如：1.2.0"
+                    name="resourceVersion"
+                    aria-label="资源版本"
+                    data-testid="resource-version"
+                  />
                 </el-form-item>
 
                 <el-form-item label="入口文件">
-                  <el-input v-model="model.entrypoint" placeholder="例如：src/index.ts" />
+                  <el-input
+                    v-model="model.entrypoint"
+                    placeholder="例如：src/index.ts"
+                    name="resourceEntrypoint"
+                    aria-label="资源入口文件"
+                    data-testid="resource-entrypoint"
+                  />
                 </el-form-item>
 
                 <el-form-item label="图标">
-                  <el-input v-model="model.icon" placeholder="例如：BookOpen" />
+                  <el-input
+                    v-model="model.icon"
+                    placeholder="例如：BookOpen"
+                    name="resourceIcon"
+                    aria-label="资源图标"
+                    data-testid="resource-icon"
+                  />
                 </el-form-item>
               </div>
 
@@ -151,6 +217,9 @@
                   type="textarea"
                   :rows="5"
                   placeholder='例如：{"name":"search-skill","tools":[]}'
+                  name="resourceManifestJson"
+                  aria-label="Manifest JSON"
+                  data-testid="resource-manifest-json"
                 />
                 <div class="field-hint">建议填写合法 JSON 对象。</div>
               </el-form-item>
@@ -159,11 +228,21 @@
             <div v-else key="mcp" class="section-body">
               <div class="form-grid form-grid-two">
                 <el-form-item label="服务名称">
-                  <el-input v-model="model.serverName" placeholder="例如：doc-search-service" />
+                  <el-input
+                    v-model="model.serverName"
+                    placeholder="例如：doc-search-service"
+                    name="resourceServerName"
+                    aria-label="服务名称"
+                    data-testid="resource-server-name"
+                  />
                 </el-form-item>
 
                 <el-form-item label="传输协议">
-                  <el-select v-model="model.transportType" placeholder="请选择传输协议">
+                  <el-select
+                    v-model="model.transportType"
+                    placeholder="请选择传输协议"
+                    data-testid="resource-transport-type"
+                  >
                     <el-option label="STDIO" value="STDIO" />
                     <el-option label="HTTP" value="HTTP" />
                   </el-select>
@@ -178,7 +257,13 @@
               <transition name="fade-swap" mode="out-in">
                 <div v-if="usesHttpTransport" key="http" class="form-grid form-grid-two">
                   <el-form-item label="Endpoint URL">
-                    <el-input v-model="model.endpointUrl" placeholder="例如：https://mcp.example.com/api" />
+                    <el-input
+                      v-model="model.endpointUrl"
+                      placeholder="例如：https://mcp.example.com/api"
+                      name="resourceEndpointUrl"
+                      aria-label="Endpoint URL"
+                      data-testid="resource-endpoint-url"
+                    />
                   </el-form-item>
 
                   <el-form-item label="Headers JSON">
@@ -187,6 +272,9 @@
                       type="textarea"
                       :rows="4"
                       placeholder='例如：{"Authorization":"Bearer xxx"}'
+                      name="resourceHeadersJson"
+                      aria-label="Headers JSON"
+                      data-testid="resource-headers-json"
                     />
                     <div class="field-hint">建议使用 JSON 对象。</div>
                   </el-form-item>
@@ -194,7 +282,13 @@
 
                 <div v-else key="stdio" class="section-body">
                   <el-form-item label="命令行">
-                    <el-input v-model="model.commandLine" placeholder="例如：npx -y @modelcontextprotocol/server-filesystem" />
+                    <el-input
+                      v-model="model.commandLine"
+                      placeholder="例如：npx -y @modelcontextprotocol/server-filesystem"
+                      name="resourceCommandLine"
+                      aria-label="命令行"
+                      data-testid="resource-command-line"
+                    />
                   </el-form-item>
 
                   <div class="form-grid form-grid-two">
@@ -204,6 +298,9 @@
                         type="textarea"
                         :rows="4"
                         placeholder='例如：["/workspace","--readonly"]'
+                        name="resourceArgsJson"
+                        aria-label="Args JSON"
+                        data-testid="resource-args-json"
                       />
                       <div class="field-hint">建议使用 JSON 数组。</div>
                     </el-form-item>
@@ -214,6 +311,9 @@
                         type="textarea"
                         :rows="4"
                         placeholder='例如：{"NODE_ENV":"production"}'
+                        name="resourceEnvJson"
+                        aria-label="Env JSON"
+                        data-testid="resource-env-json"
                       />
                       <div class="field-hint">建议使用 JSON 对象。</div>
                     </el-form-item>
@@ -252,7 +352,12 @@
 
           <div v-else class="form-grid form-grid-two">
             <el-form-item label="目标范围">
-              <el-select v-model="model.permissionTargetScope" clearable placeholder="留空使用默认策略">
+              <el-select
+                v-model="model.permissionTargetScope"
+                clearable
+                placeholder="留空使用默认策略"
+                data-testid="resource-permission-target-scope"
+              >
                 <el-option label="所属部门" value="DEPARTMENT" />
                 <el-option label="指定成员" value="PERSONAL" />
               </el-select>
@@ -260,11 +365,22 @@
             </el-form-item>
 
             <el-form-item v-if="model.permissionTargetScope === 'DEPARTMENT'" label="授权部门">
-              <el-input :model-value="selectedDepartmentName" disabled />
+              <el-input
+                :model-value="selectedDepartmentName"
+                disabled
+                name="resourcePermissionDepartment"
+                aria-label="授权部门"
+                data-testid="resource-permission-department"
+              />
             </el-form-item>
 
             <el-form-item v-else-if="model.permissionTargetScope === 'PERSONAL'" label="授权用户" required>
-              <el-input-number v-model="model.permissionUserId" :min="1" />
+              <el-input-number
+                v-model="model.permissionUserId"
+                :min="1"
+                aria-label="授权用户"
+                data-testid="resource-permission-user-id"
+              />
               <div class="field-hint">仅支持所属部门成员，后端会再次校验。</div>
             </el-form-item>
           </div>
@@ -276,8 +392,8 @@
       <div class="dialog-footer">
         <span class="footer-text">{{ permissionSummaryTitle }}</span>
         <div class="footer-actions">
-          <el-button @click="emit('close')">取消</el-button>
-          <el-button type="primary" @click="handleSubmit">保存资源</el-button>
+          <el-button data-testid="resource-cancel" @click="emit('close')">取消</el-button>
+          <el-button type="primary" data-testid="resource-save" @click="handleSubmit">保存资源</el-button>
         </div>
       </div>
     </template>

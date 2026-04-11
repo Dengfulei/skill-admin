@@ -19,26 +19,76 @@
         <el-table-column label="操作" width="170">
           <template #default="{ row }">
             <el-space v-if="row.status === 'PENDING'">
-              <el-button link type="success" @click="review(row.id, true)">通过</el-button>
-              <el-button link type="danger" @click="review(row.id, false)">驳回</el-button>
+              <el-button
+                link
+                type="success"
+                :data-testid="`approve-application-${row.id}`"
+                @click="review(row.id, true)"
+              >
+                通过
+              </el-button>
+              <el-button
+                link
+                type="danger"
+                :data-testid="`reject-application-${row.id}`"
+                @click="review(row.id, false)"
+              >
+                驳回
+              </el-button>
             </el-space>
             <span class="muted-text" v-else>已处理</span>
           </template>
         </el-table-column>
       </el-table>
     </div>
+
+    <el-dialog
+      v-model="reviewDialogVisible"
+      title="审批处理"
+      width="420px"
+      data-testid="review-dialog"
+      @closed="closeReviewDialog"
+    >
+      <el-form label-position="top">
+        <el-form-item :label="`请输入${reviewApproved ? '通过' : '驳回'}说明`">
+          <el-input
+            v-model="reviewComment"
+            type="textarea"
+            :rows="4"
+            :placeholder="reviewApproved ? '如：业务场景合理，批准开通' : '如：当前阶段不开放此工具'"
+            name="reviewComment"
+            aria-label="审批说明"
+            data-testid="review-comment"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button data-testid="review-cancel" @click="closeReviewDialog">取消</el-button>
+        <el-button
+          :type="reviewApproved ? 'success' : 'danger'"
+          data-testid="review-submit"
+          @click="submitReview"
+        >
+          {{ reviewApproved ? '通过' : '驳回' }}
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { getReviewApplicationsApi, reviewApplicationApi } from '@/api/modules'
 import { useApplicationStore } from '@/stores/application'
 import type { AccessRequestItem, AccessRequestStatus } from '@/types'
 
 const applications = ref<AccessRequestItem[]>([])
 const applicationStore = useApplicationStore()
+const reviewDialogVisible = ref(false)
+const reviewComment = ref('')
+const pendingReviewId = ref<number | null>(null)
+const reviewApproved = ref(true)
 
 async function loadData() {
   applications.value = await getReviewApplicationsApi()
@@ -49,13 +99,29 @@ function statusTag(status: AccessRequestStatus) {
   return status === 'APPROVED' ? 'success' : status === 'REJECTED' ? 'danger' : 'warning'
 }
 
-async function review(id: number, approved: boolean) {
-  const { value } = await ElMessageBox.prompt(`请输入${approved ? '通过' : '驳回'}说明`, '审批处理', {
-    inputPlaceholder: approved ? '如：业务场景合理，批准开通' : '如：当前阶段不开放此工具',
-    confirmButtonText: approved ? '通过' : '驳回'
+function review(id: number, approved: boolean) {
+  pendingReviewId.value = id
+  reviewApproved.value = approved
+  reviewComment.value = ''
+  reviewDialogVisible.value = true
+}
+
+function closeReviewDialog() {
+  reviewDialogVisible.value = false
+  reviewComment.value = ''
+  pendingReviewId.value = null
+}
+
+async function submitReview() {
+  if (!pendingReviewId.value) {
+    return
+  }
+  await reviewApplicationApi(pendingReviewId.value, {
+    approved: reviewApproved.value,
+    reviewComment: reviewComment.value.trim() || undefined
   })
-  await reviewApplicationApi(id, { approved, reviewComment: value })
   ElMessage.success('审批已提交')
+  closeReviewDialog()
   await loadData()
 }
 
